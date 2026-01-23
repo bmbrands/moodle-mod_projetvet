@@ -36,11 +36,10 @@ class students extends system_report {
      * Initialise report
      */
     protected function initialise(): void {
-        global $DB;
+        global $DB, $USER;
 
         $cmid = $this->get_parameter('cmid', 0, PARAM_INT);
         $projetvetid = $this->get_parameter('projetvetid', 0, PARAM_INT);
-        $currentgroup = $this->get_parameter('currentgroup', 0, PARAM_INT);
 
         // Get course module and context.
         $cm = get_coursemodule_from_id('projetvet', $cmid, 0, false, MUST_EXIST);
@@ -57,17 +56,20 @@ class students extends system_report {
         $this->add_base_fields("{$entityuseralias}.id, {$entityuseralias}.firstname, {$entityuseralias}.lastname,
             {$entityuseralias}.email");
 
-        // Get list of enrolled students with submit capability.
-        $enrolledusers = get_enrolled_users($context, 'mod/projetvet:submit', $currentgroup, 'u.id', null, 0, 0, true);
+        // Check if current user is a tutor and get their students.
+        if (has_capability('mod/projetvet:admin', $context)) {
+            $studentarrays = \mod_projetvet\local\api\groups::get_all_students($cmid);
+            $studentids = array_column($studentarrays, 'uniqueid');
+        } else {
+            $studentids = \mod_projetvet\local\api\groups::get_students_for_tutor($USER->id, $projetvetid);
+        }
 
-        if (empty($enrolledusers)) {
-            // No enrolled users, add impossible condition.
+        if (empty($studentids)) {
+            // No students for this tutor, add impossible condition.
             $this->add_base_condition_sql("1 = 0");
         } else {
-            $enrolleduserids = array_keys($enrolledusers);
-
-            // Show all enrolled students with submit capability.
-            [$insql, $inparams] = $DB->get_in_or_equal($enrolleduserids, SQL_PARAMS_NAMED, database::generate_param_name());
+            // Show only students assigned to this tutor.
+            [$insql, $inparams] = $DB->get_in_or_equal($studentids, SQL_PARAMS_NAMED, database::generate_param_name());
 
             $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
         }
@@ -260,6 +262,6 @@ class students extends system_report {
      * @return string
      */
     public function get_row_class(\stdClass $row): string {
-        return 'projetvet-student-row';
+        return 'clickable-row';
     }
 }

@@ -22,9 +22,14 @@
  */
 
 export const init = () => {
-    // Make student table rows clickable - navigate to the student's view page.
+    // Make table rows clickable.
     document.addEventListener('click', (event) => {
-        const row = event.target.closest('tr.projetvet-student-row');
+        const row = event.target.closest('tr.clickable-row');
+        const input = event.target.closest('input, button, select, textarea');
+        if (input) {
+            // Don't trigger if clicking on a form element.
+            return;
+        }
         if (!row) {
             return;
         }
@@ -36,10 +41,10 @@ export const init = () => {
 
         event.preventDefault();
 
-        // Find the link in the dropdown to get the URL.
+        // Find the link in the dropdown and click it.
         const link = row.querySelector('.dropdown-menu a');
-        if (link && link.href) {
-            window.location.href = link.href;
+        if (link) {
+            link.click();
         }
     });
 };

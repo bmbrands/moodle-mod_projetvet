@@ -108,5 +108,89 @@ function xmldb_projetvet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025120200, 'projetvet');
     }
 
+    if ($oldversion < 2025121600) {
+        // Define table projetvet_teacher_rating to be created.
+        $table = new xmldb_table('projetvet_teacher_rating');
+
+        // Adding fields to table projetvet_teacher_rating.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('projetvetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('rating', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'average');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table projetvet_teacher_rating.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+        $table->add_key('projetvetid', XMLDB_KEY_FOREIGN, ['projetvetid'], 'projetvet', ['id']);
+
+        // Adding indexes to table projetvet_teacher_rating.
+        $table->add_index('userid_projetvetid', XMLDB_INDEX_UNIQUE, ['userid', 'projetvetid']);
+
+        // Conditionally launch create table for projetvet_teacher_rating.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Projetvet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121600, 'projetvet');
+    }
+
+    if ($oldversion < 2026011300) {
+        // Define table projetvet_groups to be created.
+        $table = new xmldb_table('projetvet_groups');
+
+        // Adding fields to table projetvet_groups.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('projetvetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('ownerid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table projetvet_groups.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('fk_projetvetid', XMLDB_KEY_FOREIGN, ['projetvetid'], 'projetvet', ['id']);
+        $table->add_key('fk_ownerid', XMLDB_KEY_FOREIGN, ['ownerid'], 'user', ['id']);
+
+        // Conditionally launch create table for projetvet_groups.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table projetvet_group_members to be created.
+        $table = new xmldb_table('projetvet_group_members');
+
+        // Adding fields to table projetvet_group_members.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('groupid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('membertype', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'student');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table projetvet_group_members.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('fk_groupid', XMLDB_KEY_FOREIGN, ['groupid'], 'projetvet_groups', ['id']);
+        $table->add_key('fk_userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        // Adding indexes to table projetvet_group_members.
+        $table->add_index('groupid_userid', XMLDB_INDEX_UNIQUE, ['groupid', 'userid']);
+        $table->add_index('membertype_idx', XMLDB_INDEX_NOTUNIQUE, ['membertype']);
+
+        // Conditionally launch create table for projetvet_group_members.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Projetvet savepoint reached.
+        upgrade_mod_savepoint(true, 2026011300, 'projetvet');
+    }
+
     return true;
 }

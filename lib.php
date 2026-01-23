@@ -206,3 +206,28 @@ function projetvet_pluginfile($course, $cm, $context, $filearea, $args, $forcedo
 
     send_stored_file($file, 86400, 0, $forcedownload, $options);
 }
+
+/**
+ * Extends the settings navigation with the mod_projetvet settings.
+ *
+ * This function is called when the context for the page is a mod_projetvet module.
+ * This is not called by AJAX so it is safe to rely on the $PAGE.
+ *
+ * @param settings_navigation $settingsnav {@see settings_navigation}
+ * @param navigation_node $projetvetnode {@see navigation_node}
+ */
+function projetvet_extend_settings_navigation($settingsnav, $projetvetnode = null) {
+    global $PAGE;
+
+    if (has_capability('mod/projetvet:admin', $PAGE->cm->context)) {
+        $url = new moodle_url('/mod/projetvet/admin.php', ['id' => $PAGE->cm->id]);
+        $node = navigation_node::create(
+            get_string('admin'),
+            $url,
+            navigation_node::TYPE_SETTING,
+            '',
+            'adminpage',
+        );
+        $projetvetnode->add_node($node);
+    }
+}

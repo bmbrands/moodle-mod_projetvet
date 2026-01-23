@@ -45,14 +45,11 @@ class html_element extends MoodleQuickForm_static {
     /** @var int The course module ID */
     protected $cmid = 0;
 
-    /** @var string The data-action attribute */
-    protected $dataaction = '';
-
-    /** @var string The data-string attribute */
-    protected $datastring = '';
-
     /** @var string The filter name */
     protected $filter = '';
+
+    /** @var array All data-* attributes */
+    protected $dataattributes = [];
 
     /**
      * Constructor
@@ -76,14 +73,15 @@ class html_element extends MoodleQuickForm_static {
             if (isset($attributes['cmid'])) {
                 $this->cmid = $attributes['cmid'];
             }
-            if (isset($attributes['data-action'])) {
-                $this->dataaction = $attributes['data-action'];
-            }
-            if (isset($attributes['data-string'])) {
-                $this->datastring = $attributes['data-string'];
-            }
             if (isset($attributes['filter'])) {
                 $this->filter = $attributes['filter'];
+            }
+
+            // Extract all data-* attributes.
+            foreach ($attributes as $key => $value) {
+                if (strpos($key, 'data-') === 0) {
+                    $this->dataattributes[$key] = $value;
+                }
             }
         }
 
@@ -120,13 +118,22 @@ class html_element extends MoodleQuickForm_static {
         // Process filters in the content.
         $content = $this->process_filters($content);
 
+        // Convert data attributes to array format for Mustache.
+        $dataattributeslist = [];
+        foreach ($this->dataattributes as $key => $value) {
+            $dataattributeslist[] = [
+                'key' => $key,
+                'value' => $value,
+            ];
+        }
+
         $context = [
             'name' => $this->getName(),
             'id' => $this->getAttribute('id'),
             'label' => $this->getLabel(),
             'content' => $content,
-            'action' => $this->dataaction,
-            'string' => $this->datastring,
+            'dataattributes' => $dataattributeslist,
+            'hasaction' => isset($this->dataattributes['data-action']),
         ];
 
         return $context;

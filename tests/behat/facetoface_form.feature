@@ -78,6 +78,8 @@ Feature: Face-to-face session form operations in mod_projetvet
 
     And I submit the projetvet form
     And I wait until the page is ready
+    Then I should see "Interview submitted to tutor"
+    And I close the notification alert
 
     Then I should see "Updated meeting notes" in the "20/03/25" "table_row"
     And I should see "Face-to-face to be confirmed by the tutor" in the "20/03/25" "table_row"

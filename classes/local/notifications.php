@@ -43,7 +43,7 @@ class notifications {
         $student = $DB->get_record('user', ['id' => $studentid], '*', MUST_EXIST);
 
         // Get the tutor for this student.
-        $tutor = \mod_projetvet\utils::get_student_tutor($studentid, $cmid);
+        $tutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($studentid, $cmid);
         if (!$tutor) {
             // No tutor found - cannot send notification.
             return false;
@@ -102,7 +102,7 @@ class notifications {
         $student = $DB->get_record('user', ['id' => $studentid], '*', MUST_EXIST);
 
         // Get the tutor for this student.
-        $tutor = \mod_projetvet\utils::get_student_tutor($studentid, $cmid);
+        $tutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($studentid, $cmid);
         if (!$tutor) {
             // No tutor found - send from noreply.
             $tutor = \core_user::get_noreply_user();

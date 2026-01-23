@@ -99,43 +99,39 @@
 .path-mod-projetvet .th-top th {
     vertical-align: top;
 }
+.path-mod-projetvet td.w-30 {
+    width: 30px;
+    text-align: center;
+}
 
 @media (min-width: 992px) {
-    .modal-fullscreen-form.modal-lg,
-    .modal-fullscreen-form.modal-xl {
+    .modal-fullscreen-form.modal-lg, .modal-fullscreen-form.modal-xl {
         max-width: calc(100% - 4rem);
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels, .modal-fullscreen-form.modal-xl .mform.full-width-labels {
         max-width: 900px;
         margin: 0 auto;
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem, .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem {
         margin-bottom: 1.5rem;
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem label,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem label {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem label, .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem label {
         font-weight: 600;
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem.fitem_fnumber input,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem.fitem_fnumber input {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fitem.fitem_fnumber input, .modal-fullscreen-form.modal-xl .mform.full-width-labels .fitem.fitem_fnumber input {
         max-width: 150px;
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fdescription.required,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .fdescription.required {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .fdescription.required, .modal-fullscreen-form.modal-xl .mform.full-width-labels .fdescription.required {
         display: none;
     }
     .modal-fullscreen-form.modal-lg .mform.full-width-labels .col-form-label span,
     .modal-fullscreen-form.modal-lg .mform.full-width-labels .fstaticlabel,
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .col-form-label p,
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .col-form-label span,
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .col-form-label p, .modal-fullscreen-form.modal-xl .mform.full-width-labels .col-form-label span,
     .modal-fullscreen-form.modal-xl .mform.full-width-labels .fstaticlabel,
     .modal-fullscreen-form.modal-xl .mform.full-width-labels .col-form-label p {
         font-weight: 600;
     }
-    .modal-fullscreen-form.modal-lg .mform.full-width-labels .form-control[readonly],
-    .modal-fullscreen-form.modal-xl .mform.full-width-labels .form-control[readonly] {
+    .modal-fullscreen-form.modal-lg .mform.full-width-labels .form-control[readonly], .modal-fullscreen-form.modal-xl .mform.full-width-labels .form-control[readonly] {
         background-color: #f6f6f6;
         border: 0;
         border-radius: 0;

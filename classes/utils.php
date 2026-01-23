@@ -25,65 +25,6 @@ namespace mod_projetvet;
  */
 class utils {
     /**
-     * Get tutor for a student based on shared group membership.
-     *
-     * Finds users with the configured tutor role who share a group with the student.
-     *
-     * @param int $studentid The student user ID
-     * @param int $cmid The course module ID
-     * @return \stdClass|null The tutor user object or null if not found
-     */
-    public static function get_student_tutor(int $studentid, int $cmid): ?\stdClass {
-        global $DB;
-
-        // Get the tutor role shortname from settings.
-        $tutoroleshortname = get_config('mod_projetvet', 'tutor_role') ?: 'teacher';
-
-        // Get the course module and context.
-        $cm = get_coursemodule_from_id('projetvet', $cmid);
-        if (!$cm) {
-            return null;
-        }
-
-        $context = \context_module::instance($cm->id);
-
-        // Get the role ID.
-        $role = $DB->get_record('role', ['shortname' => $tutoroleshortname]);
-        if (!$role) {
-            return null;
-        }
-
-        // Get all groups the student is a member of in this course.
-        $studentgroups = groups_get_user_groups($cm->course, $studentid);
-        if (empty($studentgroups[0])) {
-            return null;
-        }
-
-        $groupids = $studentgroups[0];
-
-        // Get all users with the tutor role in this context.
-        $tutors = get_role_users($role->id, $context, true);
-
-        if (empty($tutors)) {
-            return null;
-        }
-
-        // Find a tutor who shares a group with the student.
-        foreach ($tutors as $tutor) {
-            $tutorgroups = groups_get_user_groups($cm->course, $tutor->id);
-            if (!empty($tutorgroups[0])) {
-                // Check if tutor and student share any groups.
-                $sharedgroups = array_intersect($groupids, $tutorgroups[0]);
-                if (!empty($sharedgroups)) {
-                    return $tutor;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Process a filter and return its value.
      *
      * Filters are dynamic data placeholders that can be used in HTML fields.
@@ -96,7 +37,7 @@ class utils {
     public static function get_filter(string $filter, int $studentid, int $cmid): string {
         switch ($filter) {
             case 'gettutor':
-                $tutor = self::get_student_tutor($studentid, $cmid);
+                $tutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($studentid, $cmid);
                 if ($tutor) {
                     return fullname($tutor);
                 }
@@ -446,5 +387,102 @@ class utils {
             'warning' => $warning,
             'error' => '',
         ];
+    }
+
+    /**
+     * Get the teacher/tutor name for a student.
+     *
+     * @param int $userid The student user ID
+     * @param int $cmid The course module ID
+     * @return string The teacher's full name or empty string if not found
+     */
+    public static function get_student_teacher_name(int $userid, int $cmid): string {
+        $tutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($userid, $cmid);
+        if ($tutor) {
+            return fullname($tutor);
+        }
+        return '';
+    }
+
+    /**
+     * Get all cohorts available in a course context.
+     *
+     * Returns an array of cohorts that are visible/available in the course context.
+     * Cohorts can be defined at system level, category level, or course level.
+     *
+     * @param int $courseid The course ID
+     * @return array Array of cohorts with id as key and name as value
+     */
+    public static function get_course_cohorts(int $courseid): array {
+        global $CFG;
+        require_once($CFG->dirroot . '/cohort/lib.php');
+
+        $context = \context_course::instance($courseid);
+
+        // Get all cohorts available in this context (includes parent contexts).
+        $cohorts = cohort_get_available_cohorts($context, COHORT_ALL, 0, 0);
+
+        $result = [];
+        foreach ($cohorts as $cohort) {
+            $result[$cohort->id] = $cohort->name;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get all values for a custom profile field.
+     *
+     * Returns distinct values for a specific custom profile field.
+     *
+     * @param string $fieldshortname The shortname of the custom profile field
+     * @return array Array of field values with value as both key and value
+     */
+    public static function get_profile_field_values(string $fieldshortname): array {
+        global $DB;
+
+        $values = $DB->get_records_sql("
+            SELECT DISTINCT d.data as value, d.data as label
+            FROM {user_info_data} d
+            JOIN {user_info_field} f ON f.id = d.fieldid
+            WHERE f.shortname = :shortname
+            AND d.data IS NOT NULL
+            AND d.data != ''
+            ORDER BY d.data
+        ", ['shortname' => $fieldshortname]);
+
+        $result = [];
+        foreach ($values as $value) {
+            $result[$value->value] = $value->label;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get SQL fragment to filter users by cohort membership.
+     *
+     * This is used in report filters to generate SQL that checks if a user
+     * is a member of one or more cohorts.
+     *
+     * @param array $cohortids Array of cohort IDs
+     * @param string $fieldsql The field SQL (usually the user ID field)
+     * @return array Array containing SQL string and parameters [sql, params]
+     */
+    public static function get_cohort_members_filter_sql(array $cohortids, string $fieldsql): array {
+        global $DB;
+
+        if (empty($cohortids)) {
+            return [null, []];
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($cohortids, SQL_PARAMS_NAMED);
+        $sql = "{$fieldsql} IN (
+            SELECT cm.userid
+            FROM {cohort_members} cm
+            WHERE cm.cohortid {$insql}
+        )";
+
+        return [$sql, $params];
     }
 }

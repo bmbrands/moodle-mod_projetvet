@@ -86,7 +86,7 @@ class student_info implements renderable, templatable {
         $targetinterviews = get_config('mod_projetvet', 'target_interviews') ?: 20;
 
         // Get the student's tutor.
-        $tutor = \mod_projetvet\utils::get_student_tutor($this->studentid, $this->cm->id);
+        $tutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($this->studentid, $this->moduleinstance->id);
         $tutorname = $tutor ? fullname($tutor) : get_string('notutorassigned', 'mod_projetvet');
 
         // Get the student's promotion from custom profile field.

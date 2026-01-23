@@ -70,9 +70,6 @@ if ($canviewall && !$studentid) {
     echo $OUTPUT->header();
     echo $OUTPUT->box(format_module_intro('projetvet', $moduleinstance, $cm->id), 'generalbox', 'intro');
 
-    // Display group selector if groups are enabled.
-    groups_print_activity_menu($cm, $PAGE->url);
-
     // Load JavaScript for clickable rows.
     $PAGE->requires->js_call_amd('mod_projetvet/clickable_rows', 'init');
 
@@ -82,8 +79,7 @@ if ($canviewall && !$studentid) {
         $context,
         parameters: [
             'cmid' => $cm->id,
-            'projetvetid' => $moduleinstance->id,
-            'currentgroup' => $currentgroup,
+            'projetvetid' => $moduleinstance->id
         ]
     );
     echo $report->output();
@@ -92,31 +88,31 @@ if ($canviewall && !$studentid) {
     $viewingstudentid = $studentid ? $studentid : $USER->id;
 
     // Verify access: teachers can only view students from their groups (unless they have accessallgroups).
-    if ($studentid && $canviewall && $viewingstudentid != $USER->id) {
-        // Check if teacher has accessallgroups capability.
-        $hasaccessallgroups = has_capability('moodle/site:accessallgroups', $context);
+    // if ($studentid && $canviewall && $viewingstudentid != $USER->id) {
+    //     // Check if teacher has accessallgroups capability.
+    //     $hasaccessallgroups = has_capability('moodle/site:accessallgroups', $context);
 
-        if (!$hasaccessallgroups) {
-            // Get the group mode for this activity.
-            $groupmode = groups_get_activity_groupmode($cm);
+    //     if (!$hasaccessallgroups) {
+    //         // Get the group mode for this activity.
+    //         $groupmode = groups_get_activity_groupmode($cm);
 
-            // In separate groups mode, verify the student is in an allowed group.
-            if ($groupmode == SEPARATEGROUPS) {
-                $allowedstudents = get_enrolled_users(
-                    $context,
-                    'mod/projetvet:submit',
-                    $currentgroup,
-                    'u.id'
-                );
+    //         // In separate groups mode, verify the student is in an allowed group.
+    //         if ($groupmode == SEPARATEGROUPS) {
+    //             $allowedstudents = get_enrolled_users(
+    //                 $context,
+    //                 'mod/projetvet:submit',
+    //                 $currentgroup,
+    //                 'u.id'
+    //             );
 
-                $studentids = array_keys($allowedstudents);
-                if (!in_array($viewingstudentid, $studentids)) {
-                    // Teacher doesn't have access to this student.
-                    throw new \moodle_exception('nopermissions', 'error', '', get_string('viewallactivities', 'mod_projetvet'));
-                }
-            }
-        }
-    }
+    //             $studentids = array_keys($allowedstudents);
+    //             if (!in_array($viewingstudentid, $studentids)) {
+    //                 // Teacher doesn't have access to this student.
+    //                 throw new \moodle_exception('nopermissions', 'error', '', get_string('viewallactivities', 'mod_projetvet'));
+    //             }
+    //         }
+    //     }
+    // }
 
     // Load JavaScript for activity forms.
     $PAGE->requires->js_call_amd('mod_projetvet/projetvet_form', 'init');

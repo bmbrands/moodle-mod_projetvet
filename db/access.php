@@ -112,4 +112,11 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
         ],
     ],
+    'mod/projetvet:admin' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
 ];

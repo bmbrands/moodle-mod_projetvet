@@ -1,0 +1,386 @@
+# MOODLE DEVELOPMENT RULES
+
+Follow these rules when developing for Moodle to ensure code quality and consistency.
+
+## IMPORTANT: Updating These Rules
+
+⚠️ **CRITICAL RULE**: When the user informs AI of a better way of doing something, corrections, or best practices, this information **MUST** be added to this rules file immediately.
+
+- **ADD** new knowledge to the appropriate section
+- **UPDATE** existing rules if corrections are provided
+- **CREATE** new sections if the topic doesn't exist yet
+- **MAINTAIN** the clear, directive format (DO/DO NOT, bullet points)
+- This ensures knowledge is preserved for future development sessions
+
+## AMD JavaScript
+
+- **DO NOT** manually compile AMD JavaScript files
+- A background task automatically compiles AMD modules
+- Command: `npx grunt amd --root=mod/projetvet` runs in background
+
+## JavaScript Linting
+
+- **DO NOT** add trailing spaces or empty spaces after lines
+- Trailing whitespace will cause linting failures
+- Run ESLint to check: all JS must pass linter validation
+
+## JavaScript Architecture
+
+**ALWAYS** separate HTML from JavaScript logic using the state pattern and Mustache templates.
+
+### State Management
+- **CREATE** a state class or use an existing one (e.g., `competstate.js`)
+- **STORE** all application data in the state object
+- **UPDATE** state using `setValue()` or `setData()` methods
+- **SUBSCRIBE** components to specific state keys
+
+### Template Rendering
+- **PLACE** all HTML in Mustache templates: `templates/`
+- **NEVER** build HTML strings in JavaScript
+- **USE** `Templates.render()` to render Mustache templates
+- **SUBSCRIBE** template rendering to state changes
+
+### Component Pattern
+
+```javascript
+import CompetState from './competstate';
+import Templates from 'core/templates';
+import Notification from 'core/notification';
+
+// Subscribe template to state changes
+const stateTemplate = () => {
+    const templateName = 'my-component';
+    const region = document.querySelector(`[data-region="${templateName}"]`);
+    const template = `mod_pluginname/path/${templateName}`;
+
+    const regionRenderer = (context) => {
+        if (context[templateName] === undefined) {
+            return;
+        }
+        Templates.render(template, context).then((html) => {
+            region.innerHTML = html;
+            attachEvents(); // Attach event listeners after render
+            return;
+        }).catch(Notification.exception);
+    };
+
+    CompetState.subscribe(templateName, regionRenderer);
+};
+
+// Initialize
+stateTemplate();
+```
+
+### Event Handling
+- **ATTACH** event listeners after template renders
+- **PREVENT** duplicate listeners by checking `dataset.events`
+- **UPDATE** state on form changes, not DOM directly
+- **LET** state changes trigger re-renders
+
+### State Updates
+
+```javascript
+// Update single value - triggers subscribed components
+CompetState.setValue('my-component', newData);
+
+// Update multiple values
+CompetState.setData({
+    'component1': data1,
+    'component2': data2
+});
+```
+
+### Best Practices
+- **SEPARATE** concerns: state management, rendering, and events
+- **USE** custom events for cross-component communication
+- **AVOID** direct DOM manipulation
+- **KEEP** components small and focused on one responsibility
+- **DOCUMENT** state structure and expected data shapes
+
+## Database Schema Changes
+
+When modifying database tables:
+
+1. **UPDATE** `db/install.xml` with new table/field definitions
+2. **ADD** upgrade steps in `db/upgrade.php` with the table changes
+3. **INCREMENT** version number in `version.php`
+4. **RUN** `mdk upgrade` to apply changes
+
+Example workflow:
+```
+1. Edit db/install.xml (add/modify table)
+2. Edit db/upgrade.php (add upgrade step)
+3. Edit version.php (increment version)
+4. Run: mdk upgrade
+```
+
+## Webservices (External Functions)
+
+When adding new webservices for AJAX calls:
+
+1. **CREATE** webservice class in `classes/external/` (e.g., `get_group_members.php`)
+2. **EXTEND** from `\core_external\external_api`
+3. **IMPLEMENT** required methods:
+   - `execute()` - The main webservice logic
+   - `execute_parameters()` - Define input parameters
+   - `execute_returns()` - Define return structure
+4. **REGISTER** in `db/services.php` with configuration:
+   - `classname` - Full namespaced class name
+   - `methodname` - Usually 'execute'
+   - `description` - Brief description
+   - `type` - 'read' or 'write'
+   - `ajax` - Set to `true` for AJAX calls
+   - `capabilities` - Required capability
+5. **INCREMENT** version number in `version.php`
+6. **RUN** `mdk upgrade` to register the webservice
+
+Example workflow:
+```
+1. Create classes/external/my_service.php
+2. Add entry to db/services.php
+3. Edit version.php (increment version)
+4. Run: mdk upgrade
+```
+
+Example services.php entry:
+```php
+'mod_pluginname_my_service' => [
+    'classname'     => 'mod_pluginname\external\my_service',
+    'methodname'    => 'execute',
+    'description'   => 'Get data for component',
+    'type'          => 'read',
+    'ajax'          => true,
+    'capabilities'  => 'mod/pluginname:view',
+],
+```
+
+## Persistent Classes
+
+Persistent classes provide an OOP way to work with database tables.
+
+### File Location
+- **PLACE** in: `classes/local/persistent/` or `classes/persistent/`
+- **NAME** after the database table (e.g., `group_member.php` for `projetvet_group_members`)
+- **NAMESPACE** example: `mod_projetvet\local\persistent`
+
+### Class Structure
+- **EXTEND** from `\core\persistent`
+- **DEFINE** `TABLE` constant with database table name (without prefix)
+- **IMPLEMENT** `define_properties()` method to define all fields
+
+### Required Methods
+
+```php
+/**
+ * Return the definition of the properties of this model.
+ *
+ * @return array
+ */
+protected static function define_properties() {
+    return [
+        'fieldname' => [
+            'type' => PARAM_INT,        // or PARAM_TEXT, PARAM_BOOL, etc.
+            'default' => 0,             // optional
+            'null' => NULL_NOT_ALLOWED, // or NULL_ALLOWED
+        ],
+    ];
+}
+```
+
+### Field Types
+- **USE** PARAM_INT for integers
+- **USE** PARAM_TEXT for strings
+- **USE** PARAM_BOOL for booleans
+- **USE** PARAM_FLOAT for decimals
+- **SET** 'null' => NULL_NOT_ALLOWED for required fields
+- **SET** 'null' => NULL_ALLOWED for optional fields
+
+### Standard Fields
+Automatically handled (do not define these):
+- `id` - Primary key
+- `timecreated` - Creation timestamp
+- `timemodified` - Last modified timestamp
+- `usermodified` - User who last modified
+
+### CRUD Operations
+
+```php
+// Create
+$record = new my_persistent(0, (object)['field1' => 'value1']);
+$record->create();
+
+// Read
+$record = new my_persistent($id);
+$value = $record->get('fieldname');
+
+// Update
+$record->set('fieldname', 'newvalue');
+$record->update();
+
+// Delete
+$record->delete();
+```
+
+### Custom Methods
+- **ADD** static methods for queries (e.g., `get_by_owner()`)
+- **ADD** instance methods for business logic (e.g., `is_active()`)
+- **USE** `get_record()` and `get_records()` for database queries
+- **RETURN** persistent instances from static methods
+
+### Validation Hooks
+- **IMPLEMENT** `validate_fieldname($value)` for field-level validation
+- **RETURN** true if valid, lang_string if invalid
+- **THROW** exceptions for critical validation errors
+
+### Lifecycle Hooks
+- **OVERRIDE** `before_create()` for pre-creation logic
+- **OVERRIDE** `after_create()` for post-creation logic
+- **OVERRIDE** `before_update()` for pre-update logic
+- **OVERRIDE** `after_update()` for post-update logic
+- **OVERRIDE** `before_delete()` for pre-deletion logic
+- **OVERRIDE** `after_delete()` for post-deletion logic
+
+### Best Practices
+- **USE** persistent for all database tables with business logic
+- **KEEP** database logic in persistent classes, not in other classes
+- **DOCUMENT** all custom methods with PHPDoc
+- **TEST** persistent classes with PHPUnit tests
+- **USE** type hints and return types in custom methods
+
+## Language Strings
+
+- **ADD** strings to `lang/en/pluginname.php`
+- **MAINTAIN** alphabetical order of string keys
+- **CHECK** if French language file exists (`lang/fr/pluginname.php`)
+- **UPDATE** French translations when adding English strings
+- String keys must match exactly between language files
+
+## Mustache Templates
+
+Mustache templates provide a way to separate HTML from PHP logic.
+
+### File Location
+- **PLACE** templates in: `templates/` directory
+- **ORGANIZE** in subdirectories if needed (e.g., `templates/form/`)
+- **NAME** with `.mustache` extension
+- Example: `templates/form/selected_students.mustache`
+
+### Template Structure
+- **START** with comment block documenting the template
+- **DOCUMENT** required context variables
+- **PROVIDE** example context in JSON format
+- **USE** proper Mustache syntax for variables and sections
+
+### Language Strings in Templates
+- **USE** `{{#str}}` helper for language strings in templates
+- **DO NOT** pass translated strings from PHP context
+- **FORMAT**: `{{#str}}stringkey, component{{/str}}`
+- **WITH PARAMETERS**: `{{#str}}stringkey, component, {{variable}}{{/str}}`
+
+Example:
+```mustache
+{{! Use str helper instead of passing from PHP }}
+<h5>{{#str}}selectedstudents, mod_projetvet, {{studentcount}}{{/str}}</h5>
+```
+
+### Rendering Templates
+- **USE** `$OUTPUT->render_from_template()` in PHP
+- **PASS** minimal context data (no pre-processed HTML or translations)
+- **PREPARE** data structures that match template expectations
+
+Example PHP:
+```php
+$context = [
+    'studentcount' => count($students),
+    'students' => $students,
+];
+return $OUTPUT->render_from_template('mod_pluginname/form/template_name', $context);
+```
+
+### Best Practices
+- **SEPARATE** HTML from PHP logic completely
+- **AVOID** building HTML strings in PHP
+- **USE** Mustache sections for loops: `{{#items}}...{{/items}}`
+- **USE** Mustache conditionals: `{{#condition}}...{{/condition}}`
+- **ESCAPE** output automatically (Mustache does this by default)
+- **USE** triple braces `{{{variable}}}` only when HTML output is needed
+- **DOCUMENT** complex template logic with comments
+
+## Behat Tests (Acceptance/Functional Testing)
+
+### File Location
+- **PLACE** Behat test files in: `tests/behat/`
+- **NAME** files with descriptive names ending in `.feature`
+- Example: `tests/behat/manage_entries.feature`
+
+### Behat Steps
+- **PLACE** custom step definitions in: `tests/behat/behat_mod_pluginname.php`
+- **EXTEND** from `behat_base` class
+- **PREFIX** step functions with `behat_` (e.g., `behat_mod_projetvet`)
+- **TAG** with `@javascript` when testing JavaScript functionality
+
+### Running Behat Tests
+```bash
+# Initialize Behat (first time only)
+php admin/tool/behat/cli/init.php
+
+# Run all tests for a plugin
+php admin/tool/behat/cli/run.php --tags=@mod_projetvet
+
+# Run a specific feature file
+php admin/tool/behat/cli/run.php tests/behat/manage_entries.feature
+```
+
+### Behat Best Practices
+- **USE** existing step definitions when possible
+- **WRITE** scenarios in Given/When/Then format
+- **AVOID** testing implementation details
+- **TEST** user-facing behavior and workflows
+
+## PHPUnit Tests (Unit Testing)
+
+### File Location
+- **PLACE** PHPUnit tests in: `tests/`
+- **NAME** files ending with `_test.php`
+- **ORGANIZE** by what you're testing (e.g., `lib_test.php`, `persistent_test.php`)
+- Example: `tests/utils_test.php`, `tests/group_member_test.php`
+
+### PHPUnit Class Structure
+- **EXTEND** from `advanced_testcase` or `basic_testcase`
+- **PREFIX** class name with plugin component
+- **SUFFIX** class name with `_testcase`
+- Example: `mod_projetvet_utils_testcase`
+
+### PHPUnit Test Methods
+- **PREFIX** test method names with `test_`
+- **USE** descriptive names (e.g., `test_get_student_tutor_returns_primary_tutor`)
+- **CALL** `$this->resetAfterTest()` when modifying database
+- **USE** data providers with `@dataProvider` annotation for multiple test cases
+
+### Running PHPUnit Tests
+```bash
+# Initialize PHPUnit (first time only)
+php admin/tool/phpunit/cli/init.php
+
+# Run all tests for a plugin
+vendor/bin/phpunit --testsuite mod_projetvet_testsuite
+
+# Run specific test file
+vendor/bin/phpunit mod/projetvet/tests/utils_test.php
+
+# Run specific test method
+vendor/bin/phpunit --filter test_method_name
+```
+
+### PHPUnit Best Practices
+- **TEST** one concept per test method
+- **USE** `$this->assertSame()` for strict equality checks
+- **CREATE** test fixtures with `$this->getDataGenerator()`
+- **CLEAN UP** with `resetAfterTest()` or `resetAfterTest(true)`
+- **MOCK** external dependencies when appropriate
+- **DOCUMENT** complex test setups with comments
+
+### PHPUnit Configuration
+- **DEFINE** test suite in plugin's `phpunit.xml` if needed
+- **USE** `@covers` annotation to specify what code is covered
+- **SET** proper `@group` tags for test organization

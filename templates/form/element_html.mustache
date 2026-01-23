@@ -25,15 +25,17 @@
         "name": "field_123",
         "label": "Tutor",
         "content": "Henry Chateau<br>Si le tuteur n'est pas le bon, contacter la DEVE",
-        "action": "suggestedects",
-        "string": "suggestedects_hours"
+        "dataattributes": [
+            {"key": "data-action", "value": "suggestedects"},
+            {"key": "data-string", "value": "suggestedects_hours"},
+            {"key": "data-cmid", "value": "123"}
+        ],
+        "hasaction": true
     }
 }}
-<div class="form-html-display" id="{{id}}"
-     {{#action}}data-action="{{action}}"{{/action}}
-     {{#string}}data-string="{{string}}"{{/string}}>
+<div class="form-html-display" id="{{id}}" {{#dataattributes}}{{key}}="{{value}}" {{/dataattributes}}>
     <div class="form-html-content">
         {{{content}}}
     </div>
-    {{#action}}<div class="mt-1 text-muted" id="{{id}}_suggestion"></div>{{/action}}
+    {{#hasaction}}<div class="mt-1 text-muted" id="{{id}}_suggestion"></div>{{/hasaction}}
 </div>

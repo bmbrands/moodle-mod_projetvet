@@ -25,7 +25,7 @@ export const init = () => {
     // Make table rows clickable.
     document.addEventListener('click', (event) => {
         const row = event.target.closest('tr.clickable-row');
-        const input = event.target.closest('input, button, select, textarea');
+        const input = event.target.closest('input, button, select, textarea, .undo-clickable');
         if (input) {
             // Don't trigger if clicking on a form element.
             return;

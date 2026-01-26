@@ -21,6 +21,7 @@
 
     Context variables required for this template:
     * cmid - Course module ID
+    * projetvetid - Projetvet instance ID
     * studentstoggle - Toggle context for filtering students
     * studentsreport - The students report HTML
     * teacherstoggle - Toggle context for filtering teachers
@@ -29,6 +30,7 @@
     Example context (json):
     {
         "cmid": 123,
+        "projetvetid": 456,
         "studentstoggle": {
             "id": "filter-students-without-teacher",
             "checked": true,
@@ -53,11 +55,18 @@
 </div>
 
 <div class="collapse show" id="collapsestudents-section">
-    {{#studentstoggle}}
-        {{> core/toggle }}
-    {{/studentstoggle}}
-
-    <br>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            {{#studentstoggle}}
+                {{> core/toggle }}
+            {{/studentstoggle}}
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary d-none" id="assign-selected-students" data-action="assign-teacher" data-projetvetid="{{projetvetid}}" data-cmid="{{cmid}}">
+                {{#str}}assignteacher, mod_projetvet{{/str}}
+            </button>
+        </div>
+    </div>
 
     <div id="students-report-container">
         {{{studentsreport}}}

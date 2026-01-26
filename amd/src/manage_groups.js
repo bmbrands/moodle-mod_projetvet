@@ -108,6 +108,16 @@ export const init = () => {
         showAssignTeacherModal(cmid, studentids, projetvetid);
     });
 
+    // Handle student checkbox changes to show/hide bulk assign button.
+    document.addEventListener('change', (event) => {
+        const checkbox = event.target.closest('.student-select-checkbox');
+        if (!checkbox) {
+            return;
+        }
+
+        updateBulkAssignButton();
+    });
+
     // Handle teacher radio button selection in edit_teacher_form modal.
     document.addEventListener('change', (event) => {
         const radio = event.target.closest('.teacher-select-radio');
@@ -243,4 +253,21 @@ const showAssignTeacherModal = (cmid, studentids, projetvetid) => {
     });
 
     modalForm.show();
+};
+
+/**
+ * Update visibility of bulk assign button based on selected checkboxes
+ */
+const updateBulkAssignButton = () => {
+    const button = document.getElementById('assign-selected-students');
+    if (!button) {
+        return;
+    }
+
+    const checkedBoxes = document.querySelectorAll('.student-select-checkbox:checked');
+    if (checkedBoxes.length > 0) {
+        button.classList.remove('d-none');
+    } else {
+        button.classList.add('d-none');
+    }
 };

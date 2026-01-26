@@ -120,6 +120,7 @@ class admin_page implements renderable, templatable {
 
         return [
             'cmid' => $this->cm->id,
+            'projetvetid' => $this->moduleinstance->id,
             'studentstoggle' => $studentstogglecontext,
             'studentsreport' => $studentsreport->output(),
             'teacherstoggle' => $teacherstogglecontext,

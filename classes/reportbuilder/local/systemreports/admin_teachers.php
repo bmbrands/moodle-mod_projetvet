@@ -150,7 +150,10 @@ class admin_teachers extends system_report {
                 ->set_is_sortable(false)
                 ->add_attributes(['class' => 'w-30'])
                 ->add_callback(static function($value, $row): string {
-                    return '<input type="radio" name="teacher-select" class="teacher-select-radio" data-action="select-teacher" data-teacherid="' . $row->userid_select . '">';
+                    global $OUTPUT;
+                    return $OUTPUT->render_from_template('mod_projetvet/reportbuilder/teacher_radio', [
+                        'teacherid' => $row->userid_select,
+                    ]);
                 });
 
             $this->add_column($selectcolumn);
@@ -185,7 +188,7 @@ class admin_teachers extends system_report {
             ->add_joins($entityuser->get_joins())
             ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$entityuseralias}.id")
-            ->set_is_sortable(true)
+            ->set_is_sortable(false)
             ->add_callback(static function ($value, $row) use ($projetvetid): int {
                 $rating = \mod_projetvet\local\persistent\teacher_rating::get_or_create_rating($row->id, $projetvetid);
                 return $rating->get_capacity();
@@ -202,7 +205,7 @@ class admin_teachers extends system_report {
             ->add_joins($entityuser->get_joins())
             ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$entityuseralias}.id")
-            ->set_is_sortable(true)
+            ->set_is_sortable(false)
             ->add_callback(static function ($value, $row) use ($projetvetid): int {
                 // Get student count for groups where this teacher is PRIMARY owner only.
                 // This is used for capacity planning - doesn't count secondary tutor assignments.
@@ -220,7 +223,7 @@ class admin_teachers extends system_report {
             ->add_joins($entityuser->get_joins())
             ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$entityuseralias}.id")
-            ->set_is_sortable(true)
+            ->set_is_sortable(false)
             ->add_callback(static function ($value, $row) use ($cm, $projetvetid): int {
                 // Get available capacity (target - current primary students).
                 // Only counts students in groups where teacher is PRIMARY owner.
@@ -229,8 +232,8 @@ class admin_teachers extends system_report {
 
         $this->add_column($gapcolumn);
 
-        // Default sorting: teachers with most places left (descending gap).
-        $this->set_initial_sort_column('user:gap', SORT_DESC);
+        // Default sorting by lastname.
+        $this->set_initial_sort_column('user:fullnamewithpicturelink', SORT_ASC);
     }
 
     /**

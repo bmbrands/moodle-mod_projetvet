@@ -53,6 +53,9 @@ class restore_projetvet_activity_structure_step extends restore_activity_structu
         if ($this->get_setting_value('userinfo')) {
             $paths[] = new restore_path_element('formentry', '/activity/projetvet/formentries/formentry');
             $paths[] = new restore_path_element('formdata', '/activity/projetvet/formentries/formentry/formdatas/formdata');
+            $paths[] = new restore_path_element('teacherrating', '/activity/projetvet/teacherratings/teacherrating');
+            $paths[] = new restore_path_element('group', '/activity/projetvet/groups/group');
+            $paths[] = new restore_path_element('groupmember', '/activity/projetvet/groups/group/groupmembers/groupmember');
         }
 
         // Return the paths wrapped into standard activity structure.
@@ -215,6 +218,62 @@ class restore_projetvet_activity_structure_step extends restore_activity_structu
 
         // Insert the form data record.
         $DB->insert_record('projetvet_form_data', $data);
+    }
+
+    /**
+     * Process teacher rating data
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function process_teacherrating($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->projetvetid = $this->get_new_parentid('projetvet');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->usermodified = $this->get_mappingid('user', $data->usermodified);
+
+        // Insert the teacher rating record.
+        $DB->insert_record('projetvet_teacher_rating', $data);
+    }
+
+    /**
+     * Process group data
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function process_group($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+        $data->projetvetid = $this->get_new_parentid('projetvet');
+        $data->ownerid = $this->get_mappingid('user', $data->ownerid);
+        $data->usermodified = $this->get_mappingid('user', $data->usermodified);
+
+        // Insert the group record.
+        $newitemid = $DB->insert_record('projetvet_groups', $data);
+        $this->set_mapping('group', $oldid, $newitemid);
+    }
+
+    /**
+     * Process group member data
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function process_groupmember($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->groupid = $this->get_new_parentid('group');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->usermodified = $this->get_mappingid('user', $data->usermodified);
+
+        // Insert the group member record.
+        $DB->insert_record('projetvet_group_members', $data);
     }
 
     /**

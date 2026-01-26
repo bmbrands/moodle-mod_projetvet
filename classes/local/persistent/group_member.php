@@ -64,18 +64,6 @@ class group_member extends persistent {
                 'default' => self::TYPE_STUDENT,
                 'message' => new lang_string('invaliddata', 'projetvet', 'membertype'),
             ],
-            'startdate' => [
-                'null' => NULL_ALLOWED,
-                'type' => PARAM_INT,
-                'default' => null,
-                'message' => new lang_string('invaliddata', 'projetvet', 'startdate'),
-            ],
-            'enddate' => [
-                'null' => NULL_ALLOWED,
-                'type' => PARAM_INT,
-                'default' => null,
-                'message' => new lang_string('invaliddata', 'projetvet', 'enddate'),
-            ],
         ];
     }
 
@@ -119,33 +107,6 @@ class group_member extends persistent {
     }
 
     /**
-     * Check if this membership is currently active
-     *
-     * @param int $timestamp Optional: check at specific time (defaults to now)
-     * @return bool
-     */
-    public function is_active($timestamp = null) {
-        if ($timestamp === null) {
-            $timestamp = time();
-        }
-
-        $startdate = $this->get('startdate');
-        $enddate = $this->get('enddate');
-
-        // Check start date.
-        if ($startdate && $startdate > $timestamp) {
-            return false;
-        }
-
-        // Check end date.
-        if ($enddate && $enddate <= $timestamp) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * Check if this is a tutor membership (primary or secondary)
      *
      * @return bool
@@ -180,67 +141,6 @@ class group_member extends persistent {
      */
     public function is_student() {
         return $this->get('membertype') === self::TYPE_STUDENT;
-    }
-
-    /**
-     * Extend the end date of this membership
-     *
-     * @param int $enddate New end date timestamp (NULL = remove end date)
-     * @return void
-     */
-    public function extend_membership($enddate) {
-        $this->set('enddate', $enddate);
-        $this->update();
-    }
-
-    /**
-     * Get all groups for a user
-     *
-     * @param int $userid
-     * @param int $projetvetid Optional: filter by projetvet instance
-     * @param string $membertype Optional: filter by member type
-     * @param bool $activeonly Only get active memberships
-     * @return array Array of group_member objects
-     */
-    public static function get_user_memberships($userid, $projetvetid = null, $membertype = null, $activeonly = false) {
-        global $DB;
-
-        $sql = "SELECT gm.*
-                  FROM {projetvet_group_members} gm";
-
-        if ($projetvetid) {
-            $sql .= " JOIN {projetvet_groups} g ON g.id = gm.groupid";
-        }
-
-        $sql .= " WHERE gm.userid = :userid";
-        $params = ['userid' => $userid];
-
-        if ($projetvetid) {
-            $sql .= " AND g.projetvetid = :projetvetid";
-            $params['projetvetid'] = $projetvetid;
-        }
-
-        if ($membertype) {
-            $sql .= " AND gm.membertype = :membertype";
-            $params['membertype'] = $membertype;
-        }
-
-        $sql .= " ORDER BY gm.timecreated ASC";
-
-        $records = $DB->get_records_sql($sql, $params);
-
-        $memberships = [];
-        foreach ($records as $record) {
-            $member = new self(0, $record);
-
-            if ($activeonly && !$member->is_active()) {
-                continue;
-            }
-
-            $memberships[] = $member;
-        }
-
-        return $memberships;
     }
 
     /**

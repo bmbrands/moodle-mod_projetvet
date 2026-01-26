@@ -37,10 +37,9 @@ class groups {
      *
      * @param int $userid The user ID
      * @param int $projetvetid The projetvet instance ID
-     * @param bool $activeonly Only count active students (default: true)
      * @return int Student count
      */
-    public static function get_primary_student_count(int $userid, int $projetvetid, bool $activeonly = true): int {
+    public static function get_primary_student_count(int $userid, int $projetvetid): int {
         // Get groups where this user is the owner (primary tutor).
         $groups = projetvet_group::get_by_owner($userid, $projetvetid);
 
@@ -51,74 +50,7 @@ class groups {
         $studentcount = 0;
 
         foreach ($groups as $group) {
-            $members = $group->get_members();
-
-            foreach ($members as $member) {
-                // Only count students.
-                if (!$member->is_student()) {
-                    continue;
-                }
-
-                // Skip inactive students if activeonly is true.
-                if ($activeonly && !$member->is_active()) {
-                    continue;
-                }
-
-                $studentcount++;
-            }
-        }
-
-        return $studentcount;
-    }
-
-    /**
-     * Get student count for all groups where user is ANY type of tutor
-     *
-     * This counts students in groups where the user is primary OR secondary tutor.
-     * Useful for showing all students a teacher is responsible for.
-     *
-     * @param int $userid The user ID
-     * @param int $projetvetid The projetvet instance ID
-     * @param bool $activeonly Only count active students (default: true)
-     * @return int Student count
-     */
-    public static function get_all_tutored_student_count(int $userid, int $projetvetid, bool $activeonly = true): int {
-        // Get all groups where this user is a tutor (primary or secondary).
-        $memberships = group_member::get_user_memberships(
-            $userid,
-            $projetvetid,
-            null, // Any member type.
-            $activeonly // Filter by active memberships.
-        );
-
-        if (empty($memberships)) {
-            return 0;
-        }
-
-        $studentcount = 0;
-
-        foreach ($memberships as $membership) {
-            // Only count groups where the user is a tutor.
-            if (!$membership->is_tutor()) {
-                continue;
-            }
-
-            $group = new projetvet_group($membership->get('groupid'));
-            $members = $group->get_members();
-
-            foreach ($members as $member) {
-                // Only count students.
-                if (!$member->is_student()) {
-                    continue;
-                }
-
-                // Skip inactive students if activeonly is true.
-                if ($activeonly && !$member->is_active()) {
-                    continue;
-                }
-
-                $studentcount++;
-            }
+            $studentcount += $group->get_student_count();
         }
 
         return $studentcount;
@@ -129,16 +61,57 @@ class groups {
      *
      * @param int $userid The user ID
      * @param int $projetvetid The projetvet instance ID
-     * @param bool $activeonly Only get active memberships (default: true)
      * @return array Array of group_member objects
      */
-    public static function get_student_groups(int $userid, int $projetvetid, bool $activeonly = true): array {
-        return group_member::get_user_memberships(
+    public static function get_student_groups(int $userid, int $projetvetid): array {
+        return self::get_user_memberships(
             $userid,
             $projetvetid,
-            group_member::TYPE_STUDENT,
-            $activeonly
+            group_member::TYPE_STUDENT
         );
+    }
+
+    /**
+     * Get all group memberships for a user
+     *
+     * @param int $userid The user ID
+     * @param int $projetvetid Optional: filter by projetvet instance
+     * @param string $membertype Optional: filter by member type
+     * @return array Array of group_member objects
+     */
+    public static function get_user_memberships(int $userid, ?int $projetvetid = null, ?string $membertype = null): array {
+        global $DB;
+
+        $sql = "SELECT gm.*
+                  FROM {projetvet_group_members} gm";
+
+        if ($projetvetid) {
+            $sql .= " JOIN {projetvet_groups} g ON g.id = gm.groupid";
+        }
+
+        $sql .= " WHERE gm.userid = :userid";
+        $params = ['userid' => $userid];
+
+        if ($projetvetid) {
+            $sql .= " AND g.projetvetid = :projetvetid";
+            $params['projetvetid'] = $projetvetid;
+        }
+
+        if ($membertype) {
+            $sql .= " AND gm.membertype = :membertype";
+            $params['membertype'] = $membertype;
+        }
+
+        $sql .= " ORDER BY gm.timecreated ASC";
+
+        $records = $DB->get_records_sql($sql, $params);
+
+        $memberships = [];
+        foreach ($records as $record) {
+            $memberships[] = new group_member(0, $record);
+        }
+
+        return $memberships;
     }
 
     /**
@@ -154,7 +127,7 @@ class groups {
         $target = $rating->get_capacity();
 
         // Get current student count (primary groups only).
-        $current = self::get_primary_student_count($userid, $projetvetid, true);
+        $current = self::get_primary_student_count($userid, $projetvetid);
 
         return $target - $current;
     }
@@ -368,7 +341,7 @@ class groups {
      * @return \stdClass|null User object of primary tutor or null
      */
     public static function get_student_primary_tutor(int $studentid, int $projetvetid): ?\stdClass {
-        $memberships = self::get_student_groups($studentid, $projetvetid, true);
+        $memberships = self::get_student_groups($studentid, $projetvetid);
 
         if (empty($memberships)) {
             return null;
@@ -394,7 +367,7 @@ class groups {
      * @return array Array of user objects
      */
     public static function get_student_secondary_tutors(int $studentid, int $projetvetid): array {
-        $memberships = self::get_student_groups($studentid, $projetvetid, true);
+        $memberships = self::get_student_groups($studentid, $projetvetid);
 
         if (empty($memberships)) {
             return [];
@@ -405,7 +378,7 @@ class groups {
         $group = $membership->get_group();
 
         // Get all secondary tutors in this group.
-        $members = $group->get_members(group_member::TYPE_SECONDARY_TUTOR, true);
+        $members = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
 
         $tutors = [];
         foreach ($members as $member) {
@@ -431,11 +404,10 @@ class groups {
 
         foreach ($studentids as $studentid) {
             // Remove student from any existing groups in this projetvet instance.
-            $existingmemberships = group_member::get_user_memberships(
+            $existingmemberships = self::get_user_memberships(
                 $studentid,
                 $projetvetid,
-                group_member::TYPE_STUDENT,
-                true
+                group_member::TYPE_STUDENT
             );
 
             foreach ($existingmemberships as $membership) {
@@ -481,11 +453,10 @@ class groups {
         }, $ownedgroups);
 
         // Get all groups where this user is a secondary tutor.
-        $secondarymemberships = group_member::get_user_memberships(
+        $secondarymemberships = self::get_user_memberships(
             $tutorid,
             $projetvetid,
-            group_member::TYPE_SECONDARY_TUTOR,
-            true
+            group_member::TYPE_SECONDARY_TUTOR
         );
 
         foreach ($secondarymemberships as $membership) {

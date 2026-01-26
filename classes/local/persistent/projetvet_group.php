@@ -64,16 +64,6 @@ class projetvet_group extends persistent {
     }
 
     /**
-     * Get all groups for a projetvet instance
-     *
-     * @param int $projetvetid
-     * @return array
-     */
-    public static function get_by_projetvet($projetvetid) {
-        return self::get_records(['projetvetid' => $projetvetid], 'name', 'ASC');
-    }
-
-    /**
      * Get groups owned by a specific user
      *
      * @param int $userid
@@ -88,124 +78,21 @@ class projetvet_group extends persistent {
         return self::get_records($params, 'name', 'ASC');
     }
 
-    /**
-     * Get groups where user is a member (any type)
-     *
-     * @param int $userid
-     * @param int $projetvetid Optional: filter by projetvet instance
-     * @return array
-     */
-    public static function get_by_member($userid, $projetvetid = null) {
-        global $DB;
-
-        $sql = "SELECT g.*
-                  FROM {projetvet_groups} g
-                  JOIN {projetvet_group_members} gm ON gm.groupid = g.id
-                 WHERE gm.userid = :userid";
-
-        $params = ['userid' => $userid];
-
-        if ($projetvetid) {
-            $sql .= " AND g.projetvetid = :projetvetid";
-            $params['projetvetid'] = $projetvetid;
-        }
-
-        $sql .= " ORDER BY g.name ASC";
-
-        $records = $DB->get_records_sql($sql, $params);
-
-        $groups = [];
-        foreach ($records as $record) {
-            $groups[] = new self(0, $record);
-        }
-
-        return $groups;
-    }
-
-    /**
-     * Get member count for this group
-     *
-     * @param string $membertype Optional: filter by member type
-     * @return int
-     */
-    public function get_member_count($membertype = null) {
-        global $DB;
-
-        $params = ['groupid' => $this->get('id')];
-
-        if ($membertype) {
-            $params['membertype'] = $membertype;
-        }
-
-        return $DB->count_records('projetvet_group_members', $params);
-    }
 
     /**
      * Get all members of this group
      *
      * @param string $membertype Optional: filter by member type
-     * @param bool $activeonly Only get members with no enddate or enddate in future
      * @return array Array of group_member persistent objects
      */
-    public function get_members($membertype = null, $activeonly = false) {
+    public function get_members($membertype = null) {
         $params = ['groupid' => $this->get('id')];
 
         if ($membertype) {
             $params['membertype'] = $membertype;
         }
 
-        $members = group_member::get_records($params, 'timecreated', 'ASC');
-
-        if ($activeonly) {
-            $now = time();
-            $members = array_filter($members, function ($member) use ($now) {
-                $enddate = $member->get('enddate');
-                return empty($enddate) || $enddate > $now;
-            });
-        }
-
-        return $members;
-    }
-
-    /**
-     * Check if user is a member of this group
-     *
-     * @param int $userid
-     * @param string $membertype Optional: specific member type to check
-     * @param bool $activeonly Only check active memberships
-     * @return bool
-     */
-    public function is_member($userid, $membertype = null, $activeonly = false) {
-        global $DB;
-
-        $params = [
-            'groupid' => $this->get('id'),
-            'userid' => $userid,
-        ];
-
-        if ($membertype) {
-            $params['membertype'] = $membertype;
-        }
-
-        $members = $DB->get_records('projetvet_group_members', $params);
-
-        if (empty($members)) {
-            return false;
-        }
-
-        if (!$activeonly) {
-            return true;
-        }
-
-        // Check if any membership is active.
-        $now = time();
-        foreach ($members as $member) {
-            if (empty($member->enddate) || $member->enddate > $now) {
-                return true;
-            }
-        }
-
-        return false;
+        return group_member::get_records($params, 'timecreated', 'ASC');
     }
 
     /**
@@ -213,23 +100,15 @@ class projetvet_group extends persistent {
      *
      * @param int $userid
      * @param string $membertype
-     * @param int $startdate Optional start date (defaults to now)
-     * @param int $enddate Optional end date (NULL = no end date)
      * @return group_member
      */
-    public function add_member($userid, $membertype = 'student', $startdate = null, $enddate = null) {
+    public function add_member($userid, $membertype = 'student') {
         global $USER;
-
-        if ($startdate === null) {
-            $startdate = time();
-        }
 
         $member = new group_member(0, (object)[
             'groupid' => $this->get('id'),
             'userid' => $userid,
             'membertype' => $membertype,
-            'startdate' => $startdate,
-            'enddate' => $enddate,
         ]);
 
         $member->set('usermodified', $USER->id);
@@ -239,85 +118,20 @@ class projetvet_group extends persistent {
     }
 
     /**
-     * Remove a member from this group
-     *
-     * @param int $userid
-     * @return bool
-     */
-    public function remove_member($userid) {
-        global $DB;
-
-        return $DB->delete_records('projetvet_group_members', [
-            'groupid' => $this->get('id'),
-            'userid' => $userid,
-        ]);
-    }
-
-    /**
      * Get student count for this group
      *
-     * @param bool $activeonly Only count active students (default: true)
      * @return int
      */
-    public function get_student_count(bool $activeonly = true): int {
-        $members = $this->get_members(group_member::TYPE_STUDENT, false);
-
-        if (!$activeonly) {
-            return count($members);
-        }
-
-        $count = 0;
-        foreach ($members as $member) {
-            if ($member->is_active()) {
-                $count++;
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * Get tutor count for this group (primary and secondary)
-     *
-     * @param bool $activeonly Only count active tutors (default: true)
-     * @return int
-     */
-    public function get_tutor_count(bool $activeonly = true): int {
-        $members = $this->get_members(null, false);
-
-        $count = 0;
-        foreach ($members as $member) {
-            if (!$member->is_tutor()) {
-                continue;
-            }
-
-            if ($activeonly && !$member->is_active()) {
-                continue;
-            }
-
-            $count++;
-        }
-
-        return $count;
-    }
-
-    /**
-     * Get primary tutor for this group
-     *
-     * @return group_member|null
-     */
-    public function get_primary_tutor(): ?group_member {
-        $members = $this->get_members(group_member::TYPE_PRIMARY_TUTOR, false);
-        return empty($members) ? null : reset($members);
+    public function get_student_count(): int {
+        return count($this->get_members(group_member::TYPE_STUDENT));
     }
 
     /**
      * Get secondary tutors for this group
      *
-     * @param bool $activeonly Only get active tutors (default: true)
      * @return array Array of group_member objects
      */
-    public function get_secondary_tutors(bool $activeonly = true): array {
-        return $this->get_members(group_member::TYPE_SECONDARY_TUTOR, $activeonly);
+    public function get_secondary_tutors(): array {
+        return $this->get_members(group_member::TYPE_SECONDARY_TUTOR);
     }
 }

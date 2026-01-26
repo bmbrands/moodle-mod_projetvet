@@ -32,8 +32,8 @@
     }
 }}
 <a role="button" data-toggle="collapse"
-    href="#collapse{{$id}}{{/id}}"
-    id="collapsereport{{$id}}{{/id}}"
+    href="#collapse{{$id}}{{id}}{{/id}}"
+    id="collapsereport{{$id}}{{id}}{{/id}}"
     aria-expanded="{{^contentcollapsed}}true{{/contentcollapsed}}{{#contentcollapsed}}false{{/contentcollapsed}}"
     class="btn btn-icon mr-1 icons-collapse-expand justify-content-center stretched-link
         {{#contentcollapsed}} collapsed {{/contentcollapsed}}"
@@ -47,5 +47,5 @@
     </span>
 </a>
 {{#lintonly}}
-    <div class="collapse" id="collapse{{$id}}{{/id}}"></div>
+    <div class="collapse" id="collapse{{$id}}{{id}}{{/id}}"></div>
 {{/lintonly}}

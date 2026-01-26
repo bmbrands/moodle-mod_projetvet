@@ -72,6 +72,21 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
             'timecreated', 'timemodified', 'usermodified',
         ]);
 
+        $teacherratings = new backup_nested_element('teacherratings');
+        $teacherrating = new backup_nested_element('teacherrating', ['id'], [
+            'userid', 'projetvetid', 'rating', 'timecreated', 'timemodified', 'usermodified',
+        ]);
+
+        $groups = new backup_nested_element('groups');
+        $group = new backup_nested_element('group', ['id'], [
+            'projetvetid', 'name', 'description', 'ownerid', 'timecreated', 'timemodified', 'usermodified',
+        ]);
+
+        $groupmembers = new backup_nested_element('groupmembers');
+        $groupmember = new backup_nested_element('groupmember', ['id'], [
+            'groupid', 'userid', 'membertype', 'timecreated', 'timemodified', 'usermodified',
+        ]);
+
         // Build the tree.
         // Configuration data hierarchy.
         $projetvet->add_child($formsets);
@@ -93,6 +108,15 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
         $formentry->add_child($formdatas);
         $formdatas->add_child($formdata);
 
+        $projetvet->add_child($teacherratings);
+        $teacherratings->add_child($teacherrating);
+
+        $projetvet->add_child($groups);
+        $groups->add_child($group);
+
+        $group->add_child($groupmembers);
+        $groupmembers->add_child($groupmember);
+
         // Define sources.
         $projetvet->set_source_table('projetvet', ['id' => backup::VAR_ACTIVITYID]);
 
@@ -106,6 +130,9 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
         if ($userinfo) {
             $formentry->set_source_table('projetvet_form_entry', ['projetvetid' => backup::VAR_ACTIVITYID]);
             $formdata->set_source_table('projetvet_form_data', ['entryid' => backup::VAR_PARENTID]);
+            $teacherrating->set_source_table('projetvet_teacher_rating', ['projetvetid' => backup::VAR_ACTIVITYID]);
+            $group->set_source_table('projetvet_groups', ['projetvetid' => backup::VAR_ACTIVITYID]);
+            $groupmember->set_source_table('projetvet_group_members', ['groupid' => backup::VAR_PARENTID]);
         }
 
         // Define id annotations.
@@ -124,6 +151,12 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
             $formdata->annotate_ids('user', 'usermodified');
             $formdata->annotate_ids('formfield', 'fieldid');
             $formdata->annotate_ids('formentry', 'entryid');
+            $teacherrating->annotate_ids('user', 'userid');
+            $teacherrating->annotate_ids('user', 'usermodified');
+            $group->annotate_ids('user', 'ownerid');
+            $group->annotate_ids('user', 'usermodified');
+            $groupmember->annotate_ids('user', 'userid');
+            $groupmember->annotate_ids('user', 'usermodified');
         }
 
         // Define files.

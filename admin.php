@@ -25,12 +25,10 @@
 require(__DIR__ . '/../../config.php');
 require_once(__DIR__ . '/lib.php');
 
-use mod_projetvet\reportbuilder\local\systemreports\admin_students;
-use mod_projetvet\reportbuilder\local\systemreports\admin_teachers;
-use core_reportbuilder\system_report_factory;
-
 // Course module id.
 $id = required_param('id', PARAM_INT);
+$filterstudents = optional_param('filterstudents', 0, PARAM_INT);
+$filterteachers = optional_param('filterteachers', 0, PARAM_INT);
 
 $cm = get_coursemodule_from_id('projetvet', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
@@ -49,35 +47,11 @@ $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('incourse');
 
-// Load JavaScript for modal forms.
-$PAGE->requires->js_call_amd('mod_projetvet/clickable_rows', 'init');
-$PAGE->requires->js_call_amd('mod_projetvet/manage_groups', 'init');
-
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('admin_page_heading', 'mod_projetvet'));
 
-// Students report.
-echo html_writer::tag('h3', get_string('admin_students_heading', 'mod_projetvet'));
-
-$studentsreport = system_report_factory::create(admin_students::class, $context, '', '', 0, [
-    'cmid' => $cm->id,
-    'projetvetid' => $moduleinstance->id,
-]);
-
-echo $studentsreport->output();
-
-// Add spacing between reports.
-echo html_writer::empty_tag('br');
-echo html_writer::empty_tag('br');
-
-// Teachers report.
-echo html_writer::tag('h3', get_string('admin_teachers_heading', 'mod_projetvet'));
-
-$teachersreport = system_report_factory::create(admin_teachers::class, $context, '', '', 0, [
-    'cmid' => $cm->id,
-    'projetvetid' => $moduleinstance->id,
-]);
-
-echo $teachersreport->output();
+// Render admin page using renderer.
+$renderer = $PAGE->get_renderer('mod_projetvet');
+echo $renderer->render_admin_page($moduleinstance, $cm, $context, (bool)$filterstudents, (bool)$filterteachers);
 
 echo $OUTPUT->footer();

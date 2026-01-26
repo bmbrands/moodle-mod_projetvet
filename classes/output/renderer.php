@@ -57,6 +57,21 @@ class renderer extends plugin_renderer_base {
     }
 
     /**
+     * Render the admin page
+     *
+     * @param \stdClass $moduleinstance The projetvet instance
+     * @param \stdClass $cm The course module
+     * @param \context_module $context The context
+     * @param bool $filterstudents Whether to filter students without teachers
+     * @param bool $filterteachers Whether to filter teachers with capacity
+     * @return string HTML to output
+     */
+    public function render_admin_page($moduleinstance, $cm, $context, $filterstudents = false, $filterteachers = false) {
+        $adminpage = new admin_page($moduleinstance, $cm, $context, $filterstudents, $filterteachers);
+        return $this->render_from_template('mod_projetvet/admin_page', $adminpage->export_for_template($this));
+    }
+
+    /**
      * Render the "action required" notification (email + Moodle message).
      *
      * @param entry_action_required_message $message

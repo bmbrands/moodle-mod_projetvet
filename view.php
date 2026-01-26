@@ -87,33 +87,6 @@ if ($canviewall && !$studentid) {
     // Student view or teacher/manager viewing a specific student.
     $viewingstudentid = $studentid ? $studentid : $USER->id;
 
-    // Verify access: teachers can only view students from their groups (unless they have accessallgroups).
-    // if ($studentid && $canviewall && $viewingstudentid != $USER->id) {
-    //     // Check if teacher has accessallgroups capability.
-    //     $hasaccessallgroups = has_capability('moodle/site:accessallgroups', $context);
-
-    //     if (!$hasaccessallgroups) {
-    //         // Get the group mode for this activity.
-    //         $groupmode = groups_get_activity_groupmode($cm);
-
-    //         // In separate groups mode, verify the student is in an allowed group.
-    //         if ($groupmode == SEPARATEGROUPS) {
-    //             $allowedstudents = get_enrolled_users(
-    //                 $context,
-    //                 'mod/projetvet:submit',
-    //                 $currentgroup,
-    //                 'u.id'
-    //             );
-
-    //             $studentids = array_keys($allowedstudents);
-    //             if (!in_array($viewingstudentid, $studentids)) {
-    //                 // Teacher doesn't have access to this student.
-    //                 throw new \moodle_exception('nopermissions', 'error', '', get_string('viewallactivities', 'mod_projetvet'));
-    //             }
-    //         }
-    //     }
-    // }
-
     // Load JavaScript for activity forms.
     $PAGE->requires->js_call_amd('mod_projetvet/projetvet_form', 'init');
     $PAGE->requires->js_call_amd('mod_projetvet/student_info_forms', 'init');
@@ -124,7 +97,6 @@ if ($canviewall && !$studentid) {
     // Determine if viewer is a teacher viewing a student.
     $canviewall = has_capability('mod/projetvet:viewallactivities', $context);
     $isteacher = $canviewall && $viewingstudentid != $USER->id;
-
 
     echo $renderer->render_student_info($moduleinstance, $cm, $context, $viewingstudentid, $isteacher);
 

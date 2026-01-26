@@ -47,6 +47,7 @@ class admin_students extends system_report {
 
         $cmid = $this->get_parameter('cmid', 0, PARAM_INT);
         $projetvetid = $this->get_parameter('projetvetid', 0, PARAM_INT);
+        $filterwithoutteacher = $this->get_parameter('filterwithoutteacher', 0, PARAM_BOOL);
 
         // Get course module and context.
         $cm = get_coursemodule_from_id('projetvet', $cmid, 0, false, MUST_EXIST);
@@ -71,8 +72,26 @@ class admin_students extends system_report {
             $this->add_base_condition_sql("1 = 0");
         } else {
             $enrolleduserids = array_keys($enrolledusers);
-            [$insql, $inparams] = $DB->get_in_or_equal($enrolleduserids, SQL_PARAMS_NAMED, database::generate_param_name());
-            $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
+
+            // Filter students without teacher if requested.
+            if ($filterwithoutteacher) {
+                $studentswithteacher = [];
+                foreach ($enrolleduserids as $studentid) {
+                    $primarytutor = \mod_projetvet\local\api\groups::get_student_primary_tutor($studentid, $projetvetid);
+                    if ($primarytutor) {
+                        $studentswithteacher[] = $studentid;
+                    }
+                }
+                // Remove students who have teachers.
+                $enrolleduserids = array_diff($enrolleduserids, $studentswithteacher);
+            }
+
+            if (empty($enrolleduserids)) {
+                $this->add_base_condition_sql("1 = 0");
+            } else {
+                [$insql, $inparams] = $DB->get_in_or_equal($enrolleduserids, SQL_PARAMS_NAMED, database::generate_param_name());
+                $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
+            }
         }
 
         $this->add_columns();

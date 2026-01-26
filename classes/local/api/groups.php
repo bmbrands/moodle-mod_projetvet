@@ -160,31 +160,6 @@ class groups {
     }
 
     /**
-     * Get detailed teacher statistics
-     *
-     * @param int $userid The teacher's user ID
-     * @param int $projetvetid The projetvet instance ID
-     * @return object Object with rating, target, primary_count, secondary_count, total_count, gap
-     */
-    public static function get_teacher_statistics(int $userid, int $projetvetid): object {
-        $rating = \mod_projetvet\local\persistent\teacher_rating::get_or_create_rating($userid, $projetvetid);
-
-        $primarycount = self::get_primary_student_count($userid, $projetvetid, true);
-        $totalcount = self::get_all_tutored_student_count($userid, $projetvetid, true);
-        $secondarycount = $totalcount - $primarycount;
-
-        return (object)[
-            'rating' => $rating->get('rating'),
-            'rating_string' => $rating->get_rating_string(),
-            'target' => $rating->get_capacity(),
-            'primary_count' => $primarycount,
-            'secondary_count' => $secondarycount,
-            'total_count' => $totalcount,
-            'gap' => $rating->get_capacity() - $primarycount,
-        ];
-    }
-
-    /**
      * Get available teachers for selection (excluding current teacher)
      *
      * @param int $cmid Course module ID

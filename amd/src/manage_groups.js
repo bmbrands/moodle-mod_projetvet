@@ -49,6 +49,27 @@ export const init = () => {
         showManageMembersModal(cmid, teacherid, projetvetid);
     });
 
+    // Handle update teacher rating button clicks in admin teachers report.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action="update-teacher-rating"]');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const teacherid = button.dataset.teacherid;
+        const projetvetid = button.dataset.projetvetid;
+        const cmid = button.dataset.cmid;
+
+        if (!teacherid || !projetvetid || !cmid) {
+            return;
+        }
+
+        // Open modal form to update teacher settings.
+        showTeacherSettingsModal(cmid, teacherid, projetvetid);
+    });
+
     // Handle assign teacher button clicks in admin students report.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="assign-teacher"]');
@@ -143,6 +164,45 @@ const showManageMembersModal = (cmid, teacherid, projetvetid) => {
                 type: 'success',
             });
         }
+        // Reload the page to refresh the report.
+        window.location.reload();
+    });
+
+    modalForm.show();
+};
+
+/**
+ * Show modal form for updating teacher settings (rating/capacity)
+ *
+ * @param {number} cmid Course module ID
+ * @param {number} teacherid Teacher user ID
+ * @param {number} projetvetid Projetvet instance ID
+ */
+const showTeacherSettingsModal = (cmid, teacherid, projetvetid) => {
+    const modalForm = new ModalForm({
+        formClass: '\\mod_projetvet\\form\\teacher_settings_form',
+        args: {
+            cmid: cmid,
+            teacherid: teacherid,
+            projetvetid: projetvetid,
+        },
+        returnFocus: document.activeElement,
+    });
+
+    // Add custom class to modal after it's loaded.
+    modalForm.addEventListener(modalForm.events.LOADED, () => {
+        modalForm.modal.getModal().addClass('modal-dialog-centered');
+    });
+
+    modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
+        if (event.detail.message) {
+            Notification.addNotification({
+                message: event.detail.message,
+                type: 'success',
+            });
+        }
+        // Reload the page to refresh the report.
+        window.location.reload();
     });
 
     modalForm.show();

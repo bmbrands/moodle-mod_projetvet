@@ -44,6 +44,7 @@ class admin_teachers extends system_report {
         $cmid = $this->get_parameter('cmid', 0, PARAM_INT);
         $projetvetid = $this->get_parameter('projetvetid', 0, PARAM_INT);
         $showcheckboxes = $this->get_parameter('showcheckboxes', false, PARAM_BOOL);
+        $filterwithcapacity = $this->get_parameter('filterwithcapacity', 0, PARAM_BOOL);
 
         // Get course module and context.
         $cm = get_coursemodule_from_id('projetvet', $cmid, 0, false, MUST_EXIST);
@@ -68,8 +69,25 @@ class admin_teachers extends system_report {
             $teachers = get_role_users($role->id, $context, false, 'u.id, u.lastname, u.firstname ');
             if (!empty($teachers)) {
                 $teacherids = array_keys($teachers);
-                [$insql, $inparams] = $DB->get_in_or_equal($teacherids, SQL_PARAMS_NAMED, database::generate_param_name());
-                $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
+
+                // Filter teachers with capacity if requested.
+                if ($filterwithcapacity) {
+                    $teacherswithcapacity = [];
+                    foreach ($teacherids as $teacherid) {
+                        $capacity = \mod_projetvet\local\api\groups::get_teacher_available_capacity($teacherid, $projetvetid);
+                        if ($capacity > 0) {
+                            $teacherswithcapacity[] = $teacherid;
+                        }
+                    }
+                    $teacherids = $teacherswithcapacity;
+                }
+
+                if (!empty($teacherids)) {
+                    [$insql, $inparams] = $DB->get_in_or_equal($teacherids, SQL_PARAMS_NAMED, database::generate_param_name());
+                    $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
+                } else {
+                    $this->add_base_condition_sql("1 = 0");
+                }
             } else {
                 $this->add_base_condition_sql("1 = 0");
             }

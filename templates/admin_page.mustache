@@ -84,9 +84,18 @@
 </div>
 
 <div class="collapse show" id="collapseteachers-section">
-    {{#teacherstoggle}}
-        {{> core/toggle }}
-    {{/teacherstoggle}}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            {{#teacherstoggle}}
+                {{> core/toggle }}
+            {{/teacherstoggle}}
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" data-action="upload-groups" data-projetvetid="{{projetvetid}}" data-cmid="{{cmid}}" data-courseid="{{courseid}}">
+                {{#str}}uploadgroups, mod_projetvet{{/str}}
+            </button>
+        </div>
+    </div>
 
     <br>
 

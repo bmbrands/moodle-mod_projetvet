@@ -63,20 +63,8 @@ class teacher_settings_form extends dynamic_form {
         $projetvetid = $data->projetvetid;
         $newrating = $data->rating;
 
-        // Get or create teacher rating.
-        $rating = teacher_rating::get_or_create_rating($teacherid, $projetvetid);
-
-        // Update rating if changed.
-        if ($rating->get('rating') !== $newrating) {
-            $rating->set('rating', $newrating);
-
-            // Save to database if it's a new record.
-            if (!$rating->get('id')) {
-                $rating->create();
-            } else {
-                $rating->update();
-            }
-        }
+        // Use the groups API to set the teacher rating.
+        \mod_projetvet\local\api\groups::set_teacher_rating($teacherid, $projetvetid, $newrating);
 
         return [
             'result' => true,

@@ -139,6 +139,27 @@ export const init = () => {
             }
         }
     });
+
+    // Handle upload groups button clicks in admin page.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action="upload-groups"]');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const projetvetid = button.dataset.projetvetid;
+        const cmid = button.dataset.cmid;
+        const courseid = button.dataset.courseid;
+
+        if (!projetvetid || !cmid || !courseid) {
+            return;
+        }
+
+        // Open modal form to upload groups CSV.
+        showUploadGroupsModal(cmid, courseid, projetvetid);
+    });
 };
 
 
@@ -270,4 +291,36 @@ const updateBulkAssignButton = () => {
     } else {
         button.classList.add('d-none');
     }
+};
+
+/**
+ * Show modal form for uploading groups from CSV
+ *
+ * @param {number} cmid Course module ID
+ * @param {number} courseid Course ID
+ * @param {number} projetvetid Projetvet instance ID
+ */
+const showUploadGroupsModal = (cmid, courseid, projetvetid) => {
+    const modalForm = new ModalForm({
+        formClass: '\\mod_projetvet\\form\\group_upload_form',
+        args: {
+            cmid: cmid,
+            courseid: courseid,
+            projetvetid: projetvetid,
+        },
+        returnFocus: document.activeElement,
+    });
+
+    modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
+        if (event.detail.message) {
+            Notification.addNotification({
+                message: event.detail.message,
+                type: 'success',
+            });
+        }
+        // Reload the page to refresh the reports.
+        window.location.reload();
+    });
+
+    modalForm.show();
 };

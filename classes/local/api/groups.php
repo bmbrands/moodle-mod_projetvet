@@ -133,6 +133,33 @@ class groups {
     }
 
     /**
+     * Set teacher rating for a specific user in a projetvet instance
+     *
+     * @param int $userid The teacher's user ID
+     * @param int $projetvetid The projetvet instance ID
+     * @param string $newrating The new rating value (expert, average, novice)
+     * @return \mod_projetvet\local\persistent\teacher_rating The updated rating persistent
+     */
+    public static function set_teacher_rating(int $userid, int $projetvetid, string $newrating): \mod_projetvet\local\persistent\teacher_rating {
+        // Get or create teacher rating.
+        $rating = \mod_projetvet\local\persistent\teacher_rating::get_or_create_rating($userid, $projetvetid);
+
+        // Update rating if changed.
+        if ($rating->get('rating') !== $newrating) {
+            $rating->set('rating', $newrating);
+
+            // Save to database if it's a new record.
+            if (!$rating->get('id')) {
+                $rating->create();
+            } else {
+                $rating->update();
+            }
+        }
+
+        return $rating;
+    }
+
+    /**
      * Get available teachers for selection (excluding current teacher)
      *
      * @param int $cmid Course module ID

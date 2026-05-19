@@ -77,21 +77,21 @@
     font-weight: 600;
     background-color: #e9ecef;
 }
-.tagselect-popup [data-region=selected-tags-popup] {
+.tagselect-popup [data-region="selected-tags-popup"] {
     min-height: 2rem;
 }
-.tagselect-popup [data-region=selected-tags-popup] .badge {
+.tagselect-popup [data-region="selected-tags-popup"] .badge {
     font-size: 0.875rem;
     padding: 0.375rem 0.5rem;
 }
-.tagselect-popup [data-region=selected-tags-popup] .badge .btn-link {
+.tagselect-popup [data-region="selected-tags-popup"] .badge .btn-link {
     color: inherit;
     opacity: 0.7;
 }
-.tagselect-popup [data-region=selected-tags-popup] .badge .btn-link:hover {
+.tagselect-popup [data-region="selected-tags-popup"] .badge .btn-link:hover {
     opacity: 1;
 }
-.tagselect-popup [data-region=warnings] {
+.tagselect-popup [data-region="warnings"] {
     min-height: 1.5rem;
     font-size: 0.875rem;
 }

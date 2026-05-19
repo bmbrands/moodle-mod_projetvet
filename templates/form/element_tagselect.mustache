@@ -92,7 +92,7 @@
                     {{#element.frozen}}disabled{{/element.frozen}}>
                 {{#pix}}i/edit, core{{/pix}}
                 {{#str}}selecttags, mod_projetvet{{/str}}
-                <span class="badge badge-primary ml-2" data-region="tag-count">{{element.selectedtags.length}}</span>
+                <span class="badge bg-primary ms-2" data-region="tag-count">{{element.selectedtags.length}}</span>
             </button>
             {{/isfrozen}}
 
@@ -121,13 +121,13 @@
                     <div class="tag-form" data-region="tagform">
                         <div class="d-flex icon-no-margin">
                             <h5 data-region="rownumber">{{element.rowname}}</h5>
-                            <button type="button" class="btn btn-success ml-auto mb-2 btn-sm" data-action="save-tags">
+                            <button type="button" class="btn btn-success ms-auto mb-2 btn-sm" data-action="save-tags">
                                 {{#pix}}e/save, core{{/pix}}
-                                <span class="sr-only">{{#str}}save, admin{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}save, admin{{/str}}</span>
                             </button>
-                            <button type="button" class="btn btn-secondary ml-1 mb-2 btn-sm" data-action="close-tagselect">
+                            <button type="button" class="btn btn-secondary ms-1 mb-2 btn-sm" data-action="close-tagselect">
                                 {{#pix}}e/cancel, core{{/pix}}
-                                <span class="sr-only">{{#str}}close, admin{{/str}}</span>
+                                <span class="visually-hidden">{{#str}}close, admin{{/str}}</span>
                             </button>
                         </div>
                         {{#element.helptext}}
@@ -135,8 +135,8 @@
                             {{{element.helptext}}}
                         </div>
                         {{/element.helptext}}
-                        <div class="form-group d-flex mb-0">
-                            <label for="tag-search-{{element.id}}" class="sr-only">{{#str}}search{{/str}}</label>
+                        <div class="d-flex mb-0">
+                            <label for="tag-search-{{element.id}}" class="visually-hidden">{{#str}}search{{/str}}</label>
                             <div class="{{#element.showtoggleall}}col-10{{/element.showtoggleall}}{{^element.showtoggleall}}col-12{{/element.showtoggleall}} p-0">
                                 <input type="search"
                                        class="form-control"
@@ -156,7 +156,7 @@
                             </div>
                             {{/element.showtoggleall}}
                         </div>
-                        <div class="row no-gutters">
+                        <div class="row g-0">
                             <div class="col-12 p-0">
                                 <div data-region="warnings" class="text-danger">
                                     {{#element.hasmaxtags}}

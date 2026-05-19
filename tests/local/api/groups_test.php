@@ -321,8 +321,8 @@ final class groups_test extends \advanced_testcase {
         // Keep only student2.
         groups::sync_group_students($group->get('id'), [$data['student2']->id]);
 
-        $students = $group->get_members(group_member::TYPE_STUDENT);
-        $secondary = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
+        $students = array_values($group->get_members(group_member::TYPE_STUDENT));
+        $secondary = array_values($group->get_members(group_member::TYPE_SECONDARY_TUTOR));
 
         $this->assertCount(1, $students);
         $this->assertEquals($data['student2']->id, $students[0]->get('userid'));
@@ -355,8 +355,8 @@ final class groups_test extends \advanced_testcase {
         // Replace teacher2 by teacher3.
         groups::sync_group_secondary_tutors($group->get('id'), [$teacher3->id]);
 
-        $students = $group->get_members(group_member::TYPE_STUDENT);
-        $secondary = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
+        $students = array_values($group->get_members(group_member::TYPE_STUDENT));
+        $secondary = array_values($group->get_members(group_member::TYPE_SECONDARY_TUTOR));
 
         $this->assertCount(2, $students);
         $studentids = array_map(fn($m) => $m->get('userid'), $students);
@@ -456,7 +456,7 @@ final class groups_test extends \advanced_testcase {
         $group1members = $group1->get_members(group_member::TYPE_STUDENT);
         $this->assertCount(0, $group1members);
 
-        $group2members = $group2->get_members(group_member::TYPE_STUDENT);
+        $group2members = array_values($group2->get_members(group_member::TYPE_STUDENT));
         $this->assertCount(1, $group2members);
         $this->assertEquals($data['student1']->id, $group2members[0]->get('userid'));
     }

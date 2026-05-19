@@ -32,8 +32,14 @@ import Pending from 'core/pending';
  * Initialize ECTS suggestion listeners
  */
 const initEctsSuggestion = () => {
-    // Find all number inputs with data-action="suggestedects".
-    const inputs = document.querySelectorAll('input[type="number"][data-action="suggestedects"]');
+    // Find all number inputs with data-projetvet-action="suggestedects".
+    // NOTE: We deliberately do NOT use the generic [data-action] attribute on form-control inputs,
+    // because core_form/modalform's disableButtons() does
+    //   querySelectorAll('input[type="submit"], [data-action]')
+    // and sets disabled=true on every match right before form.serialize(). Disabled inputs are
+    // skipped by jQuery.serialize(), so the field would be omitted from the submission and
+    // server-side validation would always report "You must supply a value here."
+    const inputs = document.querySelectorAll('input[type="number"][data-projetvet-action="suggestedects"]');
 
     inputs.forEach(input => {
         const suggestionDiv = document.getElementById(input.id + '_suggestion');
@@ -47,8 +53,8 @@ const initEctsSuggestion = () => {
         const studentidInput = document.querySelector('input[name="studentid"]');
         const entryidInput = document.querySelector('input[name="entryid"]');
 
-        // Get the string identifier from data-string attribute.
-        const stringIdentifier = input.getAttribute('data-string') || '';
+        // Get the string identifier from data-projetvet-string attribute.
+        const stringIdentifier = input.getAttribute('data-projetvet-string') || '';
 
         // Update suggestion when user types.
         const updateSuggestion = async() => {
@@ -215,15 +221,16 @@ const initEctsSuggestion = () => {
         }
     });
 
-    // Find all HTML elements with data-action="validateects".
-    const validateElements = document.querySelectorAll('[data-action="validateects"]');
+    // Find all number inputs with data-projetvet-action="validateects".
+    // Same reason as above for not using the generic data-action attribute on form controls.
+    const validateElements = document.querySelectorAll('[data-projetvet-action="validateects"]');
 
     validateElements.forEach(element => {
         const suggestionDiv = document.getElementById(element.id + '_suggestion');
         if (!suggestionDiv) {
             return;
         }
-        const stringIdentifier = element.getAttribute('data-string') || '';
+        const stringIdentifier = element.getAttribute('data-projetvet-string') || '';
 
         // Update validation message when final ECTS input changes.
         const updateValidation = async() => {

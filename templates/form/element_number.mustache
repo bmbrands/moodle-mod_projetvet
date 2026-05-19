@@ -50,7 +50,11 @@
        {{#min}}min="{{min}}"{{/min}}
        {{#max}}max="{{max}}"{{/max}}
        {{#step}}step="{{step}}"{{/step}}
-       {{#action}}data-action="{{action}}"{{/action}}
-       {{#string}}data-string="{{string}}"{{/string}}
+       {{! Use a plugin-specific attribute name instead of data-action because core_form/modalform's
+           disableButtons() selector "[data-action]" would otherwise match this input and set
+           disabled="true" right before form.serialize(), causing the field to be dropped from the
+           submitted data and triggering "You must supply a value here." on every submit. }}
+       {{#action}}data-projetvet-action="{{action}}"{{/action}}
+       {{#string}}data-projetvet-string="{{string}}"{{/string}}
        {{{extraattributes}}}>
 {{#action}}<div class="mt-1 text-muted" id="{{id}}_suggestion"></div>{{/action}}

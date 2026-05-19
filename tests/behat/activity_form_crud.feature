@@ -57,6 +57,7 @@ Feature: Activity form CRUD operations in mod_projetvet
     And I open tagselect for "Competencies (2 required minimum)"
     And I select tag "COMM3 - Communiquer en contexte international ou interculturel" in tagselect popup
     And I select tag "D5- Pratiquer un examen post-mortem" in tagselect popup
+    And I wait "3" seconds
     And I save tags in tagselect popup
 
     # Submit to tutor (changes status to 1)

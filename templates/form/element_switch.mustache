@@ -33,8 +33,8 @@
         "error": ""
     }
 }}
-<div id="fitem_{{element.id}}" class="form-group row fitem {{#advanced}}advanced{{/advanced}} {{#error}}has-danger{{/error}}">
-    <div class="col-md-3 col-form-label d-flex pb-0 pr-md-0">
+<div id="fitem_{{element.id}}" class="mb-3 row fitem {{#advanced}}advanced{{/advanced}} {{#error}}has-danger{{/error}}">
+    <div class="col-md-3 col-form-label d-flex pb-0 pe-md-0">
         <label for="{{element.id}}" class="d-inline word-break {{#required}}required{{/required}}">
             {{label}}
             {{#required}}
@@ -43,18 +43,19 @@
         </label>
         {{{helpbutton}}}
     </div>
-    <div class="col-md-9 form-inline align-items-start felement" data-fieldtype="switch">
-        <div class="custom-control custom-switch">
+    <div class="col-md-9 d-flex align-items-center align-items-start felement" data-fieldtype="switch">
+        <div class="form-check form-switch">
             {{! Hidden field to ensure 0 is sent when checkbox is unchecked }}
             <input type="hidden" name="{{element.name}}" value="0">
             <input type="checkbox"
-                   class="custom-control-input"
+                   role="switch"
+                   class="form-check-input"
                    id="{{element.id}}"
                    name="{{element.name}}"
                    value="{{element.value}}"
                    {{#element.checked}}checked{{/element.checked}}
                    {{#element.dataattributes}}data-{{name}}="{{value}}" {{/element.dataattributes}}>
-            <label class="custom-control-label" for="{{element.id}}">
+            <label class="form-check-label" for="{{element.id}}">
                 {{element.text}}
             </label>
         </div>

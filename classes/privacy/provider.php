@@ -34,11 +34,11 @@ use core_privacy\local\request\writer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements
-    // This plugin stores personal user data.
-    \core_privacy\local\metadata\provider,
     // This plugin can determine which users have data in a context.
     \core_privacy\local\request\core_userlist_provider,
-        // This plugin implements the core request provider.
+    // This plugin stores personal user data.
+    \core_privacy\local\metadata\provider,
+    // This plugin implements the core request provider.
     \core_privacy\local\request\plugin\provider
 {
     /**

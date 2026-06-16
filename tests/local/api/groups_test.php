@@ -299,6 +299,74 @@ final class groups_test extends \advanced_testcase {
     }
 
     /**
+     * Test sync_group_students updates only students and keeps secondary tutors untouched.
+     */
+    public function test_sync_group_students_preserves_secondary_tutors(): void {
+        $data = $this->create_test_data();
+        $generator = $this->getDataGenerator();
+
+        $teacher2 = $generator->create_user(['username' => 'teacher2']);
+        $generator->enrol_user($teacher2->id, $data['course']->id, 'editingteacher');
+
+        $group = new projetvet_group(0, (object)[
+            'projetvetid' => $data['projetvet']->id,
+            'ownerid' => $data['teacher']->id,
+            'name' => 'Test Group',
+        ]);
+        $group->create();
+        $group->add_member($data['student1']->id, group_member::TYPE_STUDENT);
+        $group->add_member($data['student2']->id, group_member::TYPE_STUDENT);
+        $group->add_member($teacher2->id, group_member::TYPE_SECONDARY_TUTOR);
+
+        // Keep only student2.
+        groups::sync_group_students($group->get('id'), [$data['student2']->id]);
+
+        $students = $group->get_members(group_member::TYPE_STUDENT);
+        $secondary = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
+
+        $this->assertCount(1, $students);
+        $this->assertEquals($data['student2']->id, $students[0]->get('userid'));
+        $this->assertCount(1, $secondary);
+        $this->assertEquals($teacher2->id, $secondary[0]->get('userid'));
+    }
+
+    /**
+     * Test sync_group_secondary_tutors updates only secondary tutors and keeps students untouched.
+     */
+    public function test_sync_group_secondary_tutors_preserves_students(): void {
+        $data = $this->create_test_data();
+        $generator = $this->getDataGenerator();
+
+        $teacher2 = $generator->create_user(['username' => 'teacher2']);
+        $teacher3 = $generator->create_user(['username' => 'teacher3']);
+        $generator->enrol_user($teacher2->id, $data['course']->id, 'editingteacher');
+        $generator->enrol_user($teacher3->id, $data['course']->id, 'editingteacher');
+
+        $group = new projetvet_group(0, (object)[
+            'projetvetid' => $data['projetvet']->id,
+            'ownerid' => $data['teacher']->id,
+            'name' => 'Test Group',
+        ]);
+        $group->create();
+        $group->add_member($data['student1']->id, group_member::TYPE_STUDENT);
+        $group->add_member($data['student2']->id, group_member::TYPE_STUDENT);
+        $group->add_member($teacher2->id, group_member::TYPE_SECONDARY_TUTOR);
+
+        // Replace teacher2 by teacher3.
+        groups::sync_group_secondary_tutors($group->get('id'), [$teacher3->id]);
+
+        $students = $group->get_members(group_member::TYPE_STUDENT);
+        $secondary = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
+
+        $this->assertCount(2, $students);
+        $studentids = array_map(fn($m) => $m->get('userid'), $students);
+        $this->assertContains((int)$data['student1']->id, $studentids);
+        $this->assertContains((int)$data['student2']->id, $studentids);
+        $this->assertCount(1, $secondary);
+        $this->assertEquals($teacher3->id, $secondary[0]->get('userid'));
+    }
+
+    /**
      * Test get_student_primary_tutor
      */
     public function test_get_student_primary_tutor(): void {

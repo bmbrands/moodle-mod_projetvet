@@ -151,9 +151,12 @@ class TagConfirm {
             action: 'remove-temp-selection'
         };
 
-        const {html, js} = await Templates.renderForPromise('mod_projetvet/tagselect_badge', context);
-        Templates.appendNodeContents(this.selectedAdditionsPopup, html, js);
-        pending.resolve();
+        try {
+            const {html, js} = await Templates.renderForPromise('mod_projetvet/tagselect_badge', context);
+            Templates.appendNodeContents(this.selectedAdditionsPopup, html, js);
+        } finally {
+            pending.resolve();
+        }
     }
 
     /**

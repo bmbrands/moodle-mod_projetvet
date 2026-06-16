@@ -320,19 +320,21 @@ class projetvet_form extends dynamic_form {
         // Get the activity structure with hydrated permissions and add fields.
         $structure = entries::get_form_structure($formsetidnumber, $currententrystatus, $context);
         $hasexpanded = false;
+        $addedcategoryheaders = [];
         foreach ($structure as $category) {
             if (!$category->canview) {
                 // Skip this category as user cannot view it.
                 continue;
             }
 
-            if ($category->entrystatus == $currententrystatus && !$category->canedit) {
+            if ($category->entrystatus == $currententrystatus && !$category->canedit && !$readonly) {
                 // Skip this category as user cannot edit it in current status.
                 continue;
             }
 
             // Add category header.
             $mform->addElement('header', 'category_' . $category->id, $category->name);
+            $addedcategoryheaders[] = 'category_' . $category->id;
 
             // Expand header if category entrystatus matches current entry status.
             if ($category->entrystatus == $currententrystatus || $category->canedit) {
@@ -677,10 +679,9 @@ class projetvet_form extends dynamic_form {
                 $mform->addGroup($buttonelements, 'buttongroup', '', [' '], false);
             }
         }
-        if (!$hasexpanded && !empty($structure)) {
-            // If no category was expanded, expand the first one by default.
-            $lastcategory = reset($structure);
-            $mform->setExpanded('category_' . $lastcategory->id);
+        if (!$hasexpanded && !empty($addedcategoryheaders)) {
+            // If no category was expanded, expand the first visible category that was actually added.
+            $mform->setExpanded(reset($addedcategoryheaders));
         }
     }
 

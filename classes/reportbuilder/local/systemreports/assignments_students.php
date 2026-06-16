@@ -32,13 +32,13 @@ use mod_projetvet\reportbuilder\local\filters\cohort;
 use mod_projetvet\reportbuilder\local\filters\teacher;
 
 /**
- * Admin student list system report for projetvet
+ * Assignments students list system report for projetvet
  *
  * @package    mod_projetvet
  * @copyright  2025 Bas Brands <bas@sonsbeekmedia.nl>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_students extends system_report {
+class assignments_students extends system_report {
     /**
      * Initialise report
      */

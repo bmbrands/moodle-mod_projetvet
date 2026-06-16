@@ -375,6 +375,7 @@ class entries {
             if (has_capability('mod/projetvet:submit', $context)) {
                 return false;
             }
+            return false;
         } else {
             return $category->canedit;
         }

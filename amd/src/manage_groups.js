@@ -23,12 +23,13 @@
 
 import ModalForm from 'core_form/modalform';
 import Notification from 'core/notification';
+import * as Str from 'core/str';
 
 /**
  * Initialize module
  */
 export const init = () => {
-    // Handle assign students button clicks in admin teachers report.
+    // Handle assign students button clicks in the teachers report.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="assign-students"]');
         if (!button) {
@@ -45,11 +46,32 @@ export const init = () => {
             return;
         }
 
-        // Open modal form to add/manage members.
-        showManageMembersModal(cmid, teacherid, projetvetid);
+        // Open modal form to assign students only.
+        showAssignStudentsModal(cmid, teacherid, projetvetid);
     });
 
-    // Handle update teacher rating button clicks in admin teachers report.
+    // Handle assign secondary teacher button clicks in the teachers report.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action="assign-secondary-teacher"]');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const teacherid = button.dataset.teacherid;
+        const projetvetid = button.dataset.projetvetid;
+        const cmid = button.dataset.cmid;
+
+        if (!teacherid || !projetvetid || !cmid) {
+            return;
+        }
+
+        // Open modal form to assign secondary tutor(s) only.
+        showAssignSecondaryTeacherModal(cmid, teacherid, projetvetid);
+    });
+
+    // Handle update teacher rating button clicks in the teachers report.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="update-teacher-rating"]');
         if (!button) {
@@ -70,7 +92,7 @@ export const init = () => {
         showTeacherSettingsModal(cmid, teacherid, projetvetid);
     });
 
-    // Handle assign teacher button clicks in admin students report.
+    // Handle assign teacher button clicks in the students report.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="assign-teacher"]');
         if (!button) {
@@ -140,7 +162,7 @@ export const init = () => {
         }
     });
 
-    // Handle upload groups button clicks in admin page.
+    // Handle upload groups button clicks in assignments page.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="upload-groups"]');
         if (!button) {
@@ -170,13 +192,14 @@ export const init = () => {
  * @param {number} teacherid Teacher user ID
  * @param {number} projetvetid Projetvet instance ID
  */
-const showManageMembersModal = (cmid, teacherid, projetvetid) => {
+const showAssignStudentsModal = (cmid, teacherid, projetvetid) => {
     const modalForm = new ModalForm({
         formClass: '\\mod_projetvet\\form\\edit_member_form',
         args: {
             cmid: cmid,
             teacherid: teacherid,
             projetvetid: projetvetid,
+            mode: 'students',
             memberid: 0,
             groupid: 0, // Will be created or loaded on the server side.
         },
@@ -186,6 +209,12 @@ const showManageMembersModal = (cmid, teacherid, projetvetid) => {
     // Add custom class to modal after it's loaded.
     modalForm.addEventListener(modalForm.events.LOADED, () => {
         modalForm.modal.getModal().addClass('modal-fullscreen-form');
+        Str.get_string('assignstudents', 'mod_projetvet')
+            .then((title) => {
+                modalForm.modal.setTitle(title);
+                return title;
+            })
+            .catch(Notification.exception);
     });
 
     modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
@@ -196,6 +225,50 @@ const showManageMembersModal = (cmid, teacherid, projetvetid) => {
             });
         }
         // Reload the page to refresh the report.
+        window.location.reload();
+    });
+
+    modalForm.show();
+};
+
+/**
+ * Show modal form for assigning secondary teacher(s)
+ *
+ * @param {number} cmid Course module ID
+ * @param {number} teacherid Teacher user ID
+ * @param {number} projetvetid Projetvet instance ID
+ */
+const showAssignSecondaryTeacherModal = (cmid, teacherid, projetvetid) => {
+    const modalForm = new ModalForm({
+        formClass: '\\mod_projetvet\\form\\edit_member_form',
+        args: {
+            cmid: cmid,
+            teacherid: teacherid,
+            projetvetid: projetvetid,
+            mode: 'secondaryteachers',
+            memberid: 0,
+            groupid: 0,
+        },
+        returnFocus: document.activeElement,
+    });
+
+    modalForm.addEventListener(modalForm.events.LOADED, () => {
+        modalForm.modal.getModal().addClass('modal-dialog-centered');
+        Str.get_string('assignsecondaryteacher', 'mod_projetvet')
+            .then((title) => {
+                modalForm.modal.setTitle(title);
+                return title;
+            })
+            .catch(Notification.exception);
+    });
+
+    modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
+        if (event.detail.message) {
+            Notification.addNotification({
+                message: event.detail.message,
+                type: 'success',
+            });
+        }
         window.location.reload();
     });
 
@@ -223,6 +296,12 @@ const showTeacherSettingsModal = (cmid, teacherid, projetvetid) => {
     // Add custom class to modal after it's loaded.
     modalForm.addEventListener(modalForm.events.LOADED, () => {
         modalForm.modal.getModal().addClass('modal-dialog-centered');
+        Str.get_string('updateteacherrating', 'mod_projetvet')
+            .then((title) => {
+                modalForm.modal.setTitle(title);
+                return title;
+            })
+            .catch(Notification.exception);
     });
 
     modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
@@ -309,6 +388,16 @@ const showUploadGroupsModal = (cmid, courseid, projetvetid) => {
             projetvetid: projetvetid,
         },
         returnFocus: document.activeElement,
+    });
+
+    modalForm.addEventListener(modalForm.events.LOADED, () => {
+        modalForm.modal.getModal().addClass('modal-dialog-centered');
+        Str.get_string('uploadgroups', 'mod_projetvet')
+            .then((title) => {
+                modalForm.modal.setTitle(title);
+                return title;
+            })
+            .catch(Notification.exception);
     });
 
     modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {

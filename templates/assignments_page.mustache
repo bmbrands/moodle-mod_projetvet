@@ -15,9 +15,9 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template mod_projetvet/admin_page
+    @template mod_projetvet/assignments_page
 
-    Admin page template with student and teacher reports.
+    Assignments page template with student and teacher reports.
 
     Context variables required for this template:
     * cmid - Course module ID
@@ -51,7 +51,7 @@
     {{< mod_projetvet/expandcollapse }}
         {{$id}}students-section{{/id}}
     {{/ mod_projetvet/expandcollapse }}
-    <h3 class="mb-0">{{#str}}admin_students_heading, mod_projetvet{{/str}}</h3>
+    <h3 class="mb-0">{{#str}}assignments_students_heading, mod_projetvet{{/str}}</h3>
 </div>
 
 <div class="collapse show" id="collapsestudents-section">
@@ -80,7 +80,7 @@
     {{< mod_projetvet/expandcollapse }}
         {{$id}}teachers-section{{/id}}
     {{/ mod_projetvet/expandcollapse }}
-    <h3 class="mb-0">{{#str}}admin_teachers_heading, mod_projetvet{{/str}}</h3>
+    <h3 class="mb-0">{{#str}}assignments_teachers_heading, mod_projetvet{{/str}}</h3>
 </div>
 
 <div class="collapse show" id="collapseteachers-section">
@@ -108,10 +108,10 @@
 require([
     'mod_projetvet/clickable_rows',
     'mod_projetvet/manage_groups',
-    'mod_projetvet/admin_filters'
-], function(clickableRows, manageGroups, adminFilters) {
+    'mod_projetvet/assignments_filters'
+], function(clickableRows, manageGroups, assignmentsFilters) {
     clickableRows.init();
     manageGroups.init();
-    adminFilters.init();
+    assignmentsFilters.init();
 });
 {{/js}}

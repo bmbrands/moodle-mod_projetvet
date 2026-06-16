@@ -17,20 +17,20 @@
 namespace mod_projetvet\output;
 
 use core_reportbuilder\system_report_factory;
-use mod_projetvet\reportbuilder\local\systemreports\admin_students;
-use mod_projetvet\reportbuilder\local\systemreports\admin_teachers;
+use mod_projetvet\reportbuilder\local\systemreports\assignments_students;
+use mod_projetvet\reportbuilder\local\systemreports\assignments_teachers;
 use renderer_base;
 use renderable;
 use templatable;
 
 /**
- * Admin page renderable class.
+ * Assignments page renderable class.
  *
  * @package    mod_projetvet
  * @copyright  2025 Bas Brands <bas@sonsbeekmedia.nl>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_page implements renderable, templatable {
+class assignments_page implements renderable, templatable {
     /**
      * @var object $moduleinstance The module instance.
      */
@@ -105,14 +105,14 @@ class admin_page implements renderable, templatable {
         ];
 
         // Generate students report.
-        $studentsreport = system_report_factory::create(admin_students::class, $this->context, '', '', 0, [
+        $studentsreport = system_report_factory::create(assignments_students::class, $this->context, '', '', 0, [
             'cmid' => $this->cm->id,
             'projetvetid' => $this->moduleinstance->id,
             'filterwithoutteacher' => $this->filterstudents,
         ]);
 
         // Generate teachers report.
-        $teachersreport = system_report_factory::create(admin_teachers::class, $this->context, '', '', 0, [
+        $teachersreport = system_report_factory::create(assignments_teachers::class, $this->context, '', '', 0, [
             'cmid' => $this->cm->id,
             'projetvetid' => $this->moduleinstance->id,
             'filterwithcapacity' => $this->filterteachers,

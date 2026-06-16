@@ -131,6 +131,7 @@ class student_info implements renderable, templatable {
         $teacherrow['projetvetid'] = $this->moduleinstance->id;
         $teacherrow['studentid'] = $this->studentid;
         $teacherrow['formsetidnumber'] = 'teacherinfo';
+        $teacherrow['readonly'] = $this->isteacher ? 0 : 1;
 
         $teacherformset = form_set::get_record(['idnumber' => 'teacherinfo']);
         if ($teacherformset) {
@@ -148,13 +149,14 @@ class student_info implements renderable, templatable {
 
         // Thesis subject row.
         $thesisrow = ['label' => get_string('thesissubject', 'mod_projetvet')];
-        $thesisrow['hasbutton'] = true;
-        $thesisrow['buttontext'] = get_string('setsubject', 'mod_projetvet');
+        $thesisrow['hasbutton'] = !$this->isteacher;
+        $thesisrow['buttontext'] = $this->isteacher ? get_string('view') : get_string('setsubject', 'mod_projetvet');
         $thesisrow['buttonaction'] = 'activity-entry-form';
         $thesisrow['cmid'] = $this->cm->id;
         $thesisrow['projetvetid'] = $this->moduleinstance->id;
         $thesisrow['studentid'] = $this->studentid;
         $thesisrow['formsetidnumber'] = 'thesis';
+        $thesisrow['readonly'] = $this->isteacher ? 1 : 0;
 
         // Get the thesis entry if it exists.
         $checkedicon = '<i class="fa fa-sm text-success fa-check-square"></i>';
@@ -166,6 +168,7 @@ class student_info implements renderable, templatable {
                 'formsetid' => $thesisformset->get('id'),
             ]);
             if ($thesisentry) {
+                $thesisrow['hasbutton'] = true;
                 $thesisrow['entryid'] = $thesisentry->get('id');
 
                 // Get the thesis subject field value.
@@ -184,12 +187,13 @@ class student_info implements renderable, templatable {
         // Mobility row.
         $mobilityrow = ['label' => get_string('internationalmobility', 'mod_projetvet')];
         $mobilityrow['hasbutton'] = !$this->isteacher;
-        $mobilityrow['buttontext'] = get_string('settitle', 'mod_projetvet');
+        $mobilityrow['buttontext'] = $this->isteacher ? get_string('view') : get_string('settitle', 'mod_projetvet');
         $mobilityrow['buttonaction'] = 'activity-entry-form';
         $mobilityrow['cmid'] = $this->cm->id;
         $mobilityrow['projetvetid'] = $this->moduleinstance->id;
         $mobilityrow['studentid'] = $this->studentid;
         $mobilityrow['formsetidnumber'] = 'mobility';
+        $mobilityrow['readonly'] = $this->isteacher ? 1 : 0;
 
         $mobilityrealized = false;
 
@@ -202,6 +206,7 @@ class student_info implements renderable, templatable {
                 'formsetid' => $mobilityformset->get('id'),
             ]);
             if ($mobilityentry) {
+                $mobilityrow['hasbutton'] = true;
                 $mobilityrow['entryid'] = $mobilityentry->get('id');
 
                 // Get the mobility title field value.

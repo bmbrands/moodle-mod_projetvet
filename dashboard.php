@@ -15,20 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Admin view for Projetvet - Students and Teachers management
+ * Dashboard view for Projetvet.
  *
  * @package    mod_projetvet
- * @copyright  2025 Bas Brands <bas@sonsbeekmedia.nl>
+ * @copyright  2026 Laurent David <laurent@call-learning.fr>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require(__DIR__ . '/../../config.php');
 require_once(__DIR__ . '/lib.php');
 
-// Course module id.
 $id = required_param('id', PARAM_INT);
-$filterstudents = optional_param('filterstudents', 0, PARAM_INT);
-$filterteachers = optional_param('filterteachers', 0, PARAM_INT);
 
 $cm = get_coursemodule_from_id('projetvet', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
@@ -41,17 +38,16 @@ require_capability('mod/projetvet:admin', $context);
 
 \mod_projetvet\event\course_module_viewed::create_from_record($moduleinstance, $cm, $course)->trigger();
 
-$PAGE->set_url('/mod/projetvet/admin.php', ['id' => $cm->id]);
-$PAGE->set_title(get_string('admin_page_title', 'mod_projetvet'));
+$PAGE->set_url('/mod/projetvet/dashboard.php', ['id' => $cm->id]);
+$PAGE->set_title(get_string('dashboard_page_title', 'mod_projetvet'));
 $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('admin_page_heading', 'mod_projetvet'));
+echo $OUTPUT->heading(get_string('dashboard_page_heading', 'mod_projetvet'));
 
-// Render admin page using renderer.
 $renderer = $PAGE->get_renderer('mod_projetvet');
-echo $renderer->render_admin_page($moduleinstance, $cm, $context, (bool)$filterstudents, (bool)$filterteachers);
+echo $renderer->render_dashboard_page($moduleinstance, $cm, $context);
 
 echo $OUTPUT->footer();

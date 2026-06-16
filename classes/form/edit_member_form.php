@@ -64,6 +64,7 @@ class edit_member_form extends dynamic_form {
         $groupid = $data->groupid;
         $teacherid = $data->teacherid;
         $projetvetid = $data->projetvetid;
+        $mode = $data->mode ?? 'all';
 
         // Get or create group.
         if (empty($groupid)) {
@@ -97,15 +98,21 @@ class edit_member_form extends dynamic_form {
 
             $message = get_string('memberupdated', 'mod_projetvet');
         } else {
-            // Add new members using groups API.
             $teacheruserids = !empty($data->teacheruserid) && is_array($data->teacheruserid) ? $data->teacheruserid : [];
             $studentuserids = !empty($data->studentuserid) && is_array($data->studentuserid) ? $data->studentuserid : [];
 
-            $addedcount = \mod_projetvet\local\api\groups::add_members(
-                $group->get('id'),
-                $teacheruserids,
-                $studentuserids
-            );
+            if ($mode === 'students') {
+                $addedcount = \mod_projetvet\local\api\groups::sync_group_students($group->get('id'), $studentuserids);
+            } else if ($mode === 'secondaryteachers') {
+                $addedcount = \mod_projetvet\local\api\groups::sync_group_secondary_tutors($group->get('id'), $teacheruserids);
+            } else {
+                // Backward-compatible behavior for legacy usage.
+                $addedcount = \mod_projetvet\local\api\groups::add_members(
+                    $group->get('id'),
+                    $teacheruserids,
+                    $studentuserids
+                );
+            }
 
             // Set appropriate message.
             if ($addedcount > 0) {
@@ -151,6 +158,7 @@ class edit_member_form extends dynamic_form {
         $cmid = $this->optional_param('cmid', null, PARAM_INT);
         $teacherid = $this->optional_param('teacherid', 0, PARAM_INT);
         $projetvetid = $this->optional_param('projetvetid', 0, PARAM_INT);
+        $mode = $this->optional_param('mode', 'all', PARAM_ALPHA);
 
         $data = [
             'cmid' => $cmid,
@@ -158,6 +166,7 @@ class edit_member_form extends dynamic_form {
             'groupid' => $groupid,
             'projetvetid' => $projetvetid,
             'teacherid' => $teacherid,
+            'mode' => $mode,
         ];
 
         // Get or find group.
@@ -240,6 +249,7 @@ class edit_member_form extends dynamic_form {
         $groupid = $this->optional_param('groupid', 0, PARAM_INT);
         $projetvetid = $this->optional_param('projetvetid', 0, PARAM_INT);
         $teacherid = $this->optional_param('teacherid', 0, PARAM_INT);
+        $mode = $this->optional_param('mode', 'all', PARAM_ALPHA);
 
         // Try to find group if not provided.
         if (empty($groupid) && $teacherid && $projetvetid) {
@@ -266,46 +276,53 @@ class edit_member_form extends dynamic_form {
         $mform->addElement('hidden', 'teacherid', $teacherid);
         $mform->setType('teacherid', PARAM_INT);
 
+        $mform->addElement('hidden', 'mode', $mode);
+        $mform->setType('mode', PARAM_ALPHA);
+
         $modcontext = context_module::instance($cmid);
         $coursecontext = $modcontext->get_course_context();
 
         // User selection (only for new members).
         if (empty($memberid)) {
-            // Get available teachers (excluding current teacher).
-            $teacheroptions = \mod_projetvet\local\api\groups::get_available_teachers($cmid, $teacherid);
+            if ($mode === 'all' || $mode === 'secondaryteachers') {
+                // Get available teachers (excluding current teacher).
+                $teacheroptions = \mod_projetvet\local\api\groups::get_available_teachers($cmid, $teacherid);
 
-            if (!empty($teacheroptions)) {
-                $groupedteacheroptions = [
-                    [
-                        'name' => get_string('teachers'),
-                        'items' => $teacheroptions,
-                    ],
-                ];
+                if (!empty($teacheroptions)) {
+                    $groupedteacheroptions = [
+                        [
+                            'name' => get_string('teachers'),
+                            'items' => $teacheroptions,
+                        ],
+                    ];
 
-                $mform->addElement('tagselect', 'teacheruserid', get_string('selectteacher', 'mod_projetvet'), [], [
-                    'groupedoptions' => $groupedteacheroptions,
-                    'multiple' => true,
-                    'showsuggestions' => true,
-                    'maxtags' => 1,
-                ]);
+                    $mform->addElement('tagselect', 'teacheruserid', get_string('selectteacher', 'mod_projetvet'), [], [
+                        'groupedoptions' => $groupedteacheroptions,
+                        'multiple' => true,
+                        'showsuggestions' => true,
+                        'maxtags' => 1,
+                    ]);
+                }
             }
 
-             // Get available students (excluding those already in other groups).
-            $studentoptions = \mod_projetvet\local\api\groups::get_available_students($cmid, $projetvetid, $groupid);
+            if ($mode === 'all' || $mode === 'students') {
+                // Get available students (excluding those already in other groups).
+                $studentoptions = \mod_projetvet\local\api\groups::get_available_students($cmid, $projetvetid, $groupid);
 
-            if (!empty($studentoptions)) {
-                $groupedstudentoptions = [
-                    [
-                        'name' => get_string('students'),
-                        'items' => $studentoptions,
-                    ],
-                ];
+                if (!empty($studentoptions)) {
+                    $groupedstudentoptions = [
+                        [
+                            'name' => get_string('students'),
+                            'items' => $studentoptions,
+                        ],
+                    ];
 
-                $mform->addElement('tagselect', 'studentuserid', get_string('selectstudent', 'mod_projetvet'), [], [
-                    'groupedoptions' => $groupedstudentoptions,
-                    'multiple' => true,
-                    'showsuggestions' => true,
-                ]);
+                    $mform->addElement('tagselect', 'studentuserid', get_string('selectstudent', 'mod_projetvet'), [], [
+                        'groupedoptions' => $groupedstudentoptions,
+                        'multiple' => true,
+                        'showsuggestions' => true,
+                    ]);
+                }
             }
 
             // Hidden field for the actual userid that will be submitted.

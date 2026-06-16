@@ -52,9 +52,11 @@ const initEctsSuggestion = () => {
 
         // Update suggestion when user types.
         const updateSuggestion = async() => {
+            const pending = new Pending('mod_projetvet/projetvet_form_suggested_ects');
             const hours = parseFloat(input.value);
             if (isNaN(hours) || hours <= 0) {
                 suggestionDiv.innerHTML = '';
+                pending.resolve();
                 return;
             }
 
@@ -65,6 +67,7 @@ const initEctsSuggestion = () => {
             const rangvalue = rangSelect ? parseInt(rangSelect.value) || 0 : 0;
 
             if (!projetvetid || !studentid) {
+                pending.resolve();
                 return;
             }
 
@@ -96,6 +99,8 @@ const initEctsSuggestion = () => {
                 suggestionDiv.innerHTML = html;
             } catch (error) {
                 Notification.exception(error);
+            } finally {
+                pending.resolve();
             }
         };
 
@@ -135,11 +140,13 @@ const initEctsSuggestion = () => {
 
         // Update suggestion when dependent fields change.
         const updateSuggestion = async() => {
+            const pending = new Pending('mod_projetvet/projetvet_form_get_ects');
             const hours = hoursInput ? parseFloat(hoursInput.value) : 0;
             const finalects = finalInput ? parseFloat(finalInput.value) : 0;
 
             if (isNaN(hours) || hours <= 0) {
                 suggestionDiv.innerHTML = '';
+                pending.resolve();
                 return;
             }
 
@@ -150,6 +157,7 @@ const initEctsSuggestion = () => {
             const rangvalue = rangSelect ? parseInt(rangSelect.value) || 0 : 0;
 
             if (!projetvetid || !studentid) {
+                pending.resolve();
                 return;
             }
 
@@ -186,6 +194,8 @@ const initEctsSuggestion = () => {
                 }
             } catch (error) {
                 Notification.exception(error);
+            } finally {
+                pending.resolve();
             }
         };
 
@@ -519,13 +529,14 @@ export const init = async() => {
             getString('delete'),
             getString('cancel'),
             async() => {
+                const pending = new Pending('mod_projetvet/projetvet_form_delete_entry');
                 try {
-                    const pending = new Pending('mod_projetvet/projetvet_form_delete_entry');
                     await Repository.deleteEntry({entryid: parseInt(entryid)});
-                    pending.resolve();
                     window.location.reload();
                 } catch (error) {
                     Notification.exception(error);
+                } finally {
+                    pending.resolve();
                 }
             }
         );

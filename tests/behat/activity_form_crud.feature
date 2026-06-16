@@ -289,3 +289,62 @@ Feature: Activity form CRUD operations in mod_projetvet
     And I click on "Delete" "button" in the "Confirm" "dialogue"
 
     Then I should not see "Activity to Delete"
+
+  Scenario: Student can edit thesis and mobility modals
+    Given I am on the "My Activities" "projetvet activity" page logged in as "student1"
+    When I click on "Set subject" "button"
+    Then the "field_thesissubject_field" "field" should be enabled
+    And I set the following fields to these values:
+      | field_thesissubject_field | Student thesis subject |
+      | field_thesisdirector      | Dr Tutor               |
+    And I click on form button "Save"
+    And I should see "Student thesis subject"
+
+    When I click on "Set title" "button"
+    Then the "field_mobilitylocation" "field" should be enabled
+    And I click on "field_mobilityerasmus" "checkbox"
+    And I set the following fields to these values:
+      | field_mobilitylocation | Paris, France |
+    And I click on form button "Save"
+    And I should see "Realized"
+
+  Scenario: Teacher sees thesis modal as readonly
+    Given I am on the "My Activities" "projetvet activity" page logged in as "student1"
+    When I click on "Set subject" "button"
+    And I set the following fields to these values:
+      | field_thesissubject_field | Thesis visible to teacher |
+    And I click on form button "Save"
+    And I log out
+
+    When I am on the "My Activities" "projetvet activity" page logged in as "teacher1"
+    And I view activities for student "Student One"
+    And I click on "View" "button" in the "Thesis subject" "table_row"
+    Then the "field_thesissubject_field" "field" should be readonly
+
+  Scenario: Teacher sees mobility modal as readonly
+    Given I am on the "My Activities" "projetvet activity" page logged in as "student1"
+    When I click on "Set title" "button"
+    And I click on "field_mobilityfmp" "checkbox"
+    And I set the following fields to these values:
+      | field_mobilitylocation | Lyon, France |
+    And I click on form button "Save"
+    And I log out
+
+    When I am on the "My Activities" "projetvet activity" page logged in as "teacher1"
+    And I view activities for student "Student One"
+    And I click on "View" "button" in the "International mobility" "table_row"
+    Then the "field_mobilitylocation" "field" should be disabled
+
+  Scenario: Practical info is editable by teacher and readonly for student
+    Given I am on the "My Activities" "projetvet activity" page logged in as "teacher1"
+    When I view activities for student "Student One"
+    And I click on "Practical Info" "button"
+    Then the "field_teacher_info" "field" should be enabled
+    And I set the following fields to these values:
+      | field_teacher_info | Teacher-only practical notes |
+    And I click on form button "Save"
+    And I log out
+
+    When I am on the "My Activities" "projetvet activity" page logged in as "student1"
+    And I click on "Practical Info" "button"
+    Then the "field_teacher_info" "field" should be readonly

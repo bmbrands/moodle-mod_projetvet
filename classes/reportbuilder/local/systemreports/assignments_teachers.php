@@ -28,13 +28,13 @@ use moodle_url;
 use pix_icon;
 
 /**
- * Admin teacher list system report for projetvet
+ * Assignments teachers list system report for projetvet
  *
  * @package    mod_projetvet
  * @copyright  2025 Bas Brands <bas@sonsbeekmedia.nl>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_teachers extends system_report {
+class assignments_teachers extends system_report {
     /**
      * The name of the temporary table used to store teacher data
      */
@@ -251,6 +251,20 @@ class admin_teachers extends system_report {
             ],
             false,
             new lang_string('assignstudents', 'mod_projetvet'),
+        )));
+
+        // Assign secondary teacher action.
+        $this->add_action((new action(
+            new moodle_url('#', []),
+            new pix_icon('i/users', ''),
+            [
+                'data-action' => 'assign-secondary-teacher',
+                'data-teacherid' => ':id',
+                'data-projetvetid' => $projetvetid,
+                'data-cmid' => $cmid,
+            ],
+            false,
+            new lang_string('assignsecondaryteacher', 'mod_projetvet'),
         )));
 
         // Update teacher rating action.

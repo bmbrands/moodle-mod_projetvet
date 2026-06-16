@@ -109,7 +109,7 @@ class edit_teacher_form extends dynamic_form {
      */
     protected function get_page_url_for_dynamic_submission(): moodle_url {
         $cmid = $this->optional_param('cmid', null, PARAM_INT);
-        return new moodle_url('/mod/projetvet/admin.php', ['id' => $cmid]);
+        return new moodle_url('/mod/projetvet/assignments.php', ['id' => $cmid]);
     }
 
     /**
@@ -163,10 +163,10 @@ class edit_teacher_form extends dynamic_form {
         $mform->addElement('hidden', 'teacherid', '');
         $mform->setType('teacherid', PARAM_INT);
 
-        // Add admin teachers report to show capacity.
+        // Add assignments teachers report to show capacity.
         $reporthtml = $this->get_teachers_report_html($cmid, $projetvetid);
         if (!empty($reporthtml)) {
-            $mform->addElement('html', '<div class="admin-teachers-report">' . $reporthtml . '</div>');
+            $mform->addElement('html', '<div class="assignments-teachers-report">' . $reporthtml . '</div>');
         }
     }
 
@@ -223,7 +223,7 @@ class edit_teacher_form extends dynamic_form {
         try {
             // Create the report instance.
             $report = \core_reportbuilder\system_report_factory::create(
-                \mod_projetvet\reportbuilder\local\systemreports\admin_teachers::class,
+                \mod_projetvet\reportbuilder\local\systemreports\assignments_teachers::class,
                 $PAGE->context,
                 '',
                 '',

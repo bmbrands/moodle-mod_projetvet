@@ -313,6 +313,84 @@ class groups {
     }
 
     /**
+     * Sync student memberships for a group.
+     *
+     * Removes current student members not in the provided array, and adds missing ones.
+     *
+     * @param int $groupid Group ID
+     * @param array $studentuserids Student user IDs to keep/add
+     * @return int Number of members added
+     */
+    public static function sync_group_students(int $groupid, array $studentuserids): int {
+        $addedcount = 0;
+        $group = new projetvet_group($groupid);
+        $currentstudents = $group->get_members(group_member::TYPE_STUDENT);
+
+        // Remove students that are not in the provided array.
+        foreach ($currentstudents as $currentmember) {
+            $userid = $currentmember->get('userid');
+            if (!in_array($userid, $studentuserids)) {
+                $currentmember->delete();
+            }
+        }
+
+        // Add students that are missing.
+        foreach ($studentuserids as $studentuserid) {
+            $existing = group_member::get_membership($groupid, $studentuserid);
+            if (!$existing) {
+                $member = new group_member(0, (object)[
+                    'groupid' => $groupid,
+                    'userid' => $studentuserid,
+                    'membertype' => group_member::TYPE_STUDENT,
+                ]);
+                $member->create();
+                $addedcount++;
+            }
+        }
+
+        return $addedcount;
+    }
+
+    /**
+     * Sync secondary tutor memberships for a group.
+     *
+     * Removes current secondary tutor members not in the provided array, and adds missing ones.
+     *
+     * @param int $groupid Group ID
+     * @param array $teacheruserids Secondary tutor user IDs to keep/add
+     * @return int Number of members added
+     */
+    public static function sync_group_secondary_tutors(int $groupid, array $teacheruserids): int {
+        $addedcount = 0;
+        $group = new projetvet_group($groupid);
+        $currentsecondaryteachers = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
+
+        // Remove secondary tutors that are not in the provided array.
+        foreach ($currentsecondaryteachers as $currentmember) {
+            $userid = $currentmember->get('userid');
+            if (!in_array($userid, $teacheruserids)) {
+                $currentmember->delete();
+            }
+        }
+
+        // Add secondary tutors that are missing.
+        foreach ($teacheruserids as $teacheruserid) {
+            $existing = group_member::get_membership($groupid, $teacheruserid);
+            if (!$existing) {
+                $member = new group_member(0, (object)[
+                    'groupid' => $groupid,
+                    'userid' => $teacheruserid,
+                    'membertype' => group_member::TYPE_SECONDARY_TUTOR,
+                ]);
+                $member->create();
+                $addedcount++;
+            }
+        }
+
+        return $addedcount;
+    }
+
+    /**
      * Add members to a group
      *
      * Syncs group membership: removes students not in the provided array and adds new ones.
@@ -327,60 +405,9 @@ class groups {
         array $teacheruserids = [],
         array $studentuserids = []
     ): int {
-        $addedcount = 0;
-
-        // Get current members in the group.
-        $group = new projetvet_group($groupid);
-        $currentstudents = $group->get_members(group_member::TYPE_STUDENT);
-        $currentsecondaryteachers = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
-
-        // Remove students that are not in the provided array.
-        foreach ($currentstudents as $currentmember) {
-            $userid = $currentmember->get('userid');
-            if (!in_array($userid, $studentuserids)) {
-                $currentmember->delete();
-            }
-        }
-
-        // Remove secondary tutors that are not in the provided array.
-        foreach ($currentsecondaryteachers as $currentmember) {
-            $userid = $currentmember->get('userid');
-            if (!in_array($userid, $teacheruserids)) {
-                $currentmember->delete();
-            }
-        }
-
-        // Add teachers as secondary tutors.
-        foreach ($teacheruserids as $teacheruserid) {
-            // Check if member already exists.
-            $existing = group_member::get_membership($groupid, $teacheruserid);
-            if (!$existing) {
-                $member = new group_member(0, (object)[
-                    'groupid' => $groupid,
-                    'userid' => $teacheruserid,
-                    'membertype' => group_member::TYPE_SECONDARY_TUTOR,
-                ]);
-                $member->create();
-                $addedcount++;
-            }
-        }
-
-        // Add students.
-        foreach ($studentuserids as $studentuserid) {
-            // Check if member already exists.
-            $existing = group_member::get_membership($groupid, $studentuserid);
-            if (!$existing) {
-                $member = new group_member(0, (object)[
-                    'groupid' => $groupid,
-                    'userid' => $studentuserid,
-                    'membertype' => group_member::TYPE_STUDENT,
-                ]);
-                $member->create();
-                $addedcount++;
-            }
-        }
-
-        return $addedcount;
+        $addedstudents = self::sync_group_students($groupid, $studentuserids);
+        $addedteachers = self::sync_group_secondary_tutors($groupid, $teacheruserids);
+        return $addedstudents + $addedteachers;
     }
 
     /**

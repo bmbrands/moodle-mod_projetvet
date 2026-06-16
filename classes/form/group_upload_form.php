@@ -19,6 +19,7 @@ namespace mod_projetvet\form;
 use context;
 use context_module;
 use core_form\dynamic_form;
+use core_text;
 use mod_projetvet\local\importer\group_importer;
 use moodle_exception;
 use moodle_url;
@@ -70,11 +71,14 @@ class group_upload_form extends dynamic_form {
 
         if (!empty($files)) {
             $file = reset($files);
+            if (core_text::strtolower(pathinfo($file->get_filename(), PATHINFO_EXTENSION)) !== 'csv') {
+                throw new moodle_exception('invalidfiletype', 'error', '', $file->get_filename());
+            }
             $filepath = make_request_directory() . '/' . $file->get_filename();
             $file->copy_content_to($filepath);
             try {
                 $groupimporter = new group_importer($data->courseid, $data->cmid, $data->projetvetid);
-                $groupimporter->import($filepath);
+                $groupimporter->import($filepath, $data->delimiter_name, $data->encoding);
             } finally {
                 unlink($filepath);
             }
@@ -82,7 +86,7 @@ class group_upload_form extends dynamic_form {
 
         return [
             'result' => true,
-            'returnurl' => new moodle_url('/mod/projetvet/admin.php', ['id' => $data->cmid]),
+            'returnurl' => new moodle_url('/mod/projetvet/assignments.php', ['id' => $data->cmid]),
         ];
     }
 
@@ -116,7 +120,7 @@ class group_upload_form extends dynamic_form {
      */
     protected function get_page_url_for_dynamic_submission(): moodle_url {
         $cmid = $this->optional_param('cmid', null, PARAM_INT);
-        return new moodle_url('/mod/projetvet/admin.php', ['id' => $cmid]);
+        return new moodle_url('/mod/projetvet/assignments.php', ['id' => $cmid]);
     }
 
     /**
@@ -125,6 +129,10 @@ class group_upload_form extends dynamic_form {
      * @return void
      */
     protected function definition() {
+        global $CFG;
+
+        require_once($CFG->libdir . '/csvlib.class.php');
+
         $mform = $this->_form;
         $cmid = $this->optional_param('cmid', null, PARAM_INT);
         $courseid = $this->optional_param('courseid', null, PARAM_INT);
@@ -149,10 +157,26 @@ class group_upload_form extends dynamic_form {
         $mform->addElement('static', 'downloadlink', '', $downloadlink);
 
         // Upload the CSV file.
-        $mform->addElement('filepicker', 'csvfile', get_string('csvfile', 'mod_data'), null, [
+        $mform->addElement('filemanager', 'csvfile', get_string('csvfile', 'mod_projetvet'), null, [
             'maxbytes' => 0,
+            'subdirs' => 0,
+            'maxfiles' => 1,
             'accepted_types' => ['.csv'],
         ]);
+
+        $choices = \csv_import_reader::get_delimiter_list();
+        $mform->addElement('select', 'delimiter_name', get_string('csvdelimiter', 'group'), $choices);
+        if (array_key_exists('cfg', $choices)) {
+            $mform->setDefault('delimiter_name', 'cfg');
+        } else if (get_string('listsep', 'langconfig') == ';') {
+            $mform->setDefault('delimiter_name', 'semicolon');
+        } else {
+            $mform->setDefault('delimiter_name', 'comma');
+        }
+
+        $choices = core_text::get_encodings();
+        $mform->addElement('select', 'encoding', get_string('encoding', 'group'), $choices);
+        $mform->setDefault('encoding', 'UTF-8');
 
         // Add checkbox for deleting existing groups.
         $mform->addElement('advcheckbox', 'deleteexisting', get_string('deleteexistinggroups', 'mod_projetvet'));

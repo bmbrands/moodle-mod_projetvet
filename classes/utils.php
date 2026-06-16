@@ -221,6 +221,121 @@ class utils {
     }
 
     /**
+     * Get project count for a student in the activities formset.
+     *
+     * Counts entries that have moved beyond draft status.
+     *
+     * @param int $projetvetid The projetvet instance ID
+     * @param int $studentid The student ID
+     * @return int Number of projects
+     */
+    public static function get_student_project_count(int $projetvetid, int $studentid): int {
+        global $DB;
+
+        $sql = "SELECT COUNT(fe.id)
+                  FROM {projetvet_form_entry} fe
+                  JOIN {projetvet_form_set} fs ON fs.id = fe.formsetid
+                 WHERE fe.projetvetid = :projetvetid
+                   AND fe.studentid = :studentid
+                   AND fs.idnumber = :activities
+                   AND fe.entrystatus > :draftstatus";
+
+        return (int)$DB->count_records_sql($sql, [
+            'projetvetid' => $projetvetid,
+            'studentid' => $studentid,
+            'activities' => 'activities',
+            'draftstatus' => 0,
+        ]);
+    }
+
+    /**
+     * Get number of projects waiting for tutor validation.
+     *
+     * For activities, statuses 1 and 3 are teacher action states:
+     * - 1: eligibility validation pending
+     * - 3: final validation pending
+     *
+     * @param int $projetvetid The projetvet instance ID
+     * @param int $studentid The student ID
+     * @return int Number of projects to validate
+     */
+    public static function get_student_projects_to_validate_count(int $projetvetid, int $studentid): int {
+        global $DB;
+
+        $sql = "SELECT COUNT(fe.id)
+                  FROM {projetvet_form_entry} fe
+                  JOIN {projetvet_form_set} fs ON fs.id = fe.formsetid
+                 WHERE fe.projetvetid = :projetvetid
+                   AND fe.studentid = :studentid
+                   AND fs.idnumber = :activities
+                   AND fe.entrystatus IN (:status1, :status3)";
+
+        return (int)$DB->count_records_sql($sql, [
+            'projetvetid' => $projetvetid,
+            'studentid' => $studentid,
+            'activities' => 'activities',
+            'status1' => 1,
+            'status3' => 3,
+        ]);
+    }
+
+    /**
+     * Get median ECTS for a student's projects.
+     *
+     * The median is computed from all non-null values of the final_ects field
+     * in activities entries beyond draft status.
+     *
+     * @param int $projetvetid The projetvet instance ID
+     * @param int $studentid The student ID
+     * @return float Median ECTS, 0 if no data
+     */
+    public static function get_student_median_ects(int $projetvetid, int $studentid): float {
+        global $DB;
+
+        $field = $DB->get_record('projetvet_form_field', ['idnumber' => 'final_ects'], 'id');
+        if (!$field) {
+            return 0.0;
+        }
+
+        $sql = "SELECT fd.id, fd.intvalue
+                  FROM {projetvet_form_data} fd
+                  JOIN {projetvet_form_entry} fe ON fe.id = fd.entryid
+                  JOIN {projetvet_form_set} fs ON fs.id = fe.formsetid
+                 WHERE fe.projetvetid = :projetvetid
+                   AND fe.studentid = :studentid
+                   AND fs.idnumber = :activities
+                   AND fe.entrystatus > :draftstatus
+                   AND fd.fieldid = :fieldid
+                   AND fd.intvalue IS NOT NULL
+                 ORDER BY fd.intvalue ASC, fd.id ASC";
+
+        $records = $DB->get_records_sql($sql, [
+            'projetvetid' => $projetvetid,
+            'studentid' => $studentid,
+            'activities' => 'activities',
+            'draftstatus' => 0,
+            'fieldid' => $field->id,
+        ]);
+
+        if (empty($records)) {
+            return 0.0;
+        }
+
+        $values = array_map(static function ($record): int {
+            return (int)$record->intvalue;
+        }, array_values($records));
+
+        $count = count($values);
+        $middle = (int)floor($count / 2);
+
+        if ($count % 2 !== 0) {
+            return (float)$values[$middle];
+        }
+
+        return (float)(($values[$middle - 1] + $values[$middle]) / 2);
+    }
+
+    /**
      * Get suggested ECTS credits based on hours and rang.
      *
      * @param int $projetvetid The projetvet instance ID

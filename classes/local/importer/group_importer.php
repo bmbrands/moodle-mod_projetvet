@@ -74,7 +74,7 @@ class group_importer {
      * @param string $encoding
      * @throws moodle_exception
      */
-    public function import(string $filepath, string $delimiter = 'comma', string $encoding = 'utf-8') {
+    public function import(string $filepath, string $delimiter = 'comma', string $encoding = 'UTF-8') {
         global $DB;
 
         $iid = csv_import_reader::get_new_iid('projetvet_groups');
@@ -85,113 +85,115 @@ class group_importer {
             throw new moodle_exception('cannotreadfile', 'mod_projetvet', '', $filepath);
         }
 
-        $csvreader->load_csv_content($content, $encoding, $delimiter);
-        $columns = $csvreader->get_columns();
+        try {
+            $csvreader->load_csv_content($content, $encoding, $delimiter);
+            $columns = $csvreader->get_columns();
 
-        if (empty($columns) || !in_array('teacher', $columns)) {
-            throw new moodle_exception('invalidcsvstructure', 'mod_projetvet');
-        }
-
-        // Find column indices.
-        $teacheridx = array_search('teacher', $columns);
-        $ratingidx = array_search('teacherrating', $columns);
-        $secondaryteacheridx = array_search('secondaryteacher', $columns);
-
-        // Find student columns (student1, student2, etc.).
-        $studentindices = [];
-        foreach ($columns as $idx => $colname) {
-            if (preg_match('/^student(\d+)$/', $colname)) {
-                $studentindices[] = $idx;
-            }
-        }
-
-        $csvreader->init();
-        while ($row = $csvreader->next()) {
-            if (empty($row[$teacheridx])) {
-                continue; // Skip rows without a teacher.
+            if (empty($columns) || !in_array('teacher', $columns)) {
+                throw new moodle_exception('invalidcsvstructure', 'mod_projetvet');
             }
 
-            $teacherusername = trim($row[$teacheridx]);
-            $teacher = $DB->get_record('user', ['username' => $teacherusername], '*', IGNORE_MISSING);
+            // Find column indices.
+            $teacheridx = array_search('teacher', $columns);
+            $ratingidx = array_search('teacherrating', $columns);
+            $secondaryteacheridx = array_search('secondaryteacher', $columns);
 
-            if (!$teacher) {
-                debugging("Teacher not found: $teacherusername", DEBUG_DEVELOPER);
-                continue;
-            }
-
-            // Set teacher rating if provided.
-            if ($ratingidx !== false && !empty($row[$ratingidx])) {
-                $ratingvalue = trim($row[$ratingidx]);
-                // Validate rating value.
-                $validratings = [
-                    teacher_rating::RATING_EXPERT,
-                    teacher_rating::RATING_AVERAGE,
-                    teacher_rating::RATING_NOVICE,
-                ];
-                if (in_array($ratingvalue, $validratings)) {
-                    groups::set_teacher_rating($teacher->id, $this->projetvetid, $ratingvalue);
+            // Find student columns (student1, student2, etc.).
+            $studentindices = [];
+            foreach ($columns as $idx => $colname) {
+                if (preg_match('/^student(\d+)$/', $colname)) {
+                    $studentindices[] = $idx;
                 }
             }
 
-            // Get or create group for this teacher.
-            $existinggroups = projetvet_group::get_by_owner($teacher->id, $this->projetvetid);
-            if (!empty($existinggroups)) {
-                $group = reset($existinggroups);
-            } else {
-                // Create new group.
-                $groupname = fullname($teacher);
-                $group = new projetvet_group(0, (object)[
-                    'name' => $groupname,
-                    'ownerid' => $teacher->id,
-                    'projetvetid' => $this->projetvetid,
-                ]);
-                $group->create();
-            }
-
-            // Get secondary teacher if provided.
-            $secondaryteacherid = null;
-            if ($secondaryteacheridx !== false && !empty($row[$secondaryteacheridx])) {
-                $secondaryusername = trim($row[$secondaryteacheridx]);
-                $secondaryteacher = $DB->get_record('user', ['username' => $secondaryusername], '*', IGNORE_MISSING);
-                if ($secondaryteacher) {
-                    $secondaryteacherid = $secondaryteacher->id;
+            $csvreader->init();
+            while ($row = $csvreader->next()) {
+                if (empty($row[$teacheridx])) {
+                    continue; // Skip rows without a teacher.
                 }
-            }
 
-            // Add secondary teacher as member if provided.
-            if ($secondaryteacherid) {
-                $this->add_or_update_member(
-                    $group->get('id'),
-                    $secondaryteacherid,
-                    group_member::TYPE_SECONDARY_TUTOR
-                );
-            }
+                $teacherusername = trim($row[$teacheridx]);
+                $teacher = $DB->get_record('user', ['username' => $teacherusername], '*', IGNORE_MISSING);
 
-            // Add students.
-            foreach ($studentindices as $idx) {
-                if (empty($row[$idx])) {
+                if (!$teacher) {
+                    debugging("Teacher not found: $teacherusername", DEBUG_DEVELOPER);
                     continue;
                 }
 
-                $studentusername = trim($row[$idx]);
-                $student = $DB->get_record('user', ['username' => $studentusername], '*', IGNORE_MISSING);
-
-                if (!$student) {
-                    debugging("Student not found: $studentusername", DEBUG_DEVELOPER);
-                    continue;
+                // Set teacher rating if provided.
+                if ($ratingidx !== false && !empty($row[$ratingidx])) {
+                    $ratingvalue = trim($row[$ratingidx]);
+                    // Validate rating value.
+                    $validratings = [
+                        teacher_rating::RATING_EXPERT,
+                        teacher_rating::RATING_AVERAGE,
+                        teacher_rating::RATING_NOVICE,
+                    ];
+                    if (in_array($ratingvalue, $validratings)) {
+                        groups::set_teacher_rating($teacher->id, $this->projetvetid, $ratingvalue);
+                    }
                 }
 
-                // Add student as member.
-                $this->add_or_update_member(
-                    $group->get('id'),
-                    $student->id,
-                    group_member::TYPE_STUDENT
-                );
-            }
-        }
+                // Get or create group for this teacher.
+                $existinggroups = projetvet_group::get_by_owner($teacher->id, $this->projetvetid);
+                if (!empty($existinggroups)) {
+                    $group = reset($existinggroups);
+                } else {
+                    // Create new group.
+                    $groupname = fullname($teacher);
+                    $group = new projetvet_group(0, (object)[
+                        'name' => $groupname,
+                        'ownerid' => $teacher->id,
+                        'projetvetid' => $this->projetvetid,
+                    ]);
+                    $group->create();
+                }
 
-        $csvreader->cleanup();
-        $csvreader->close();
+                // Get secondary teacher if provided.
+                $secondaryteacherid = null;
+                if ($secondaryteacheridx !== false && !empty($row[$secondaryteacheridx])) {
+                    $secondaryusername = trim($row[$secondaryteacheridx]);
+                    $secondaryteacher = $DB->get_record('user', ['username' => $secondaryusername], '*', IGNORE_MISSING);
+                    if ($secondaryteacher) {
+                        $secondaryteacherid = $secondaryteacher->id;
+                    }
+                }
+
+                // Add secondary teacher as member if provided.
+                if ($secondaryteacherid) {
+                    $this->add_or_update_member(
+                        $group->get('id'),
+                        $secondaryteacherid,
+                        group_member::TYPE_SECONDARY_TUTOR
+                    );
+                }
+
+                // Add students.
+                foreach ($studentindices as $idx) {
+                    if (empty($row[$idx])) {
+                        continue;
+                    }
+
+                    $studentusername = trim($row[$idx]);
+                    $student = $DB->get_record('user', ['username' => $studentusername], '*', IGNORE_MISSING);
+
+                    if (!$student) {
+                        debugging("Student not found: $studentusername", DEBUG_DEVELOPER);
+                        continue;
+                    }
+
+                    // Add student as member.
+                    $this->add_or_update_member(
+                        $group->get('id'),
+                        $student->id,
+                        group_member::TYPE_STUDENT
+                    );
+                }
+            }
+        } finally {
+            $csvreader->cleanup();
+            $csvreader->close();
+        }
     }
 
     /**

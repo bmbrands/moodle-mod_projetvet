@@ -22,7 +22,6 @@ use core_privacy\local\metadata\collection;
 use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
-use core_privacy\local\request\helper;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
@@ -35,12 +34,13 @@ use core_privacy\local\request\writer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements
-    // This plugin can determine which users have data in a context.
-    \core_privacy\local\request\core_userlist_provider,
     // This plugin stores personal user data.
     \core_privacy\local\metadata\provider,
-    // This plugin implements the core request provider.
-    \core_privacy\local\request\plugin\provider {
+    // This plugin can determine which users have data in a context.
+    \core_privacy\local\request\core_userlist_provider,
+        // This plugin implements the core request provider.
+    \core_privacy\local\request\plugin\provider
+{
     /**
      * Returns metadata about this system.
      *

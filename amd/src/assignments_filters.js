@@ -14,9 +14,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Admin filters for students and teachers reports
+ * Assignment filters for students and teachers reports
  *
- * @module     mod_projetvet/admin_filters
+ * @module     mod_projetvet/assignments_filters
  * @copyright  2026 Bas Brands <bas@sonsbeekmedia.nl>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

@@ -68,22 +68,23 @@ class assignments_teachers extends system_report {
         // Get all teachers with approve capability.
         $teacherids = \mod_projetvet\local\api\groups::get_all_teachers($cmid);
 
-        if (!empty($teacherids)) {
-            // Filter teachers with capacity if requested.
-            if ($filterwithcapacity) {
-                $teacherswithcapacity = [];
-                foreach ($teacherids as $teacherid) {
-                    $capacity = \mod_projetvet\local\api\groups::get_teacher_available_capacity($teacherid, $projetvetid);
-                    if ($capacity > 0) {
-                        $teacherswithcapacity[] = $teacherid;
-                    }
+        // Filter teachers with capacity if requested.
+        if (!empty($teacherids) && $filterwithcapacity) {
+            $teacherswithcapacity = [];
+            foreach ($teacherids as $teacherid) {
+                $capacity = \mod_projetvet\local\api\groups::get_teacher_available_capacity($teacherid, $projetvetid);
+                if ($capacity > 0) {
+                    $teacherswithcapacity[] = $teacherid;
                 }
-                $teacherids = $teacherswithcapacity;
             }
+            $teacherids = $teacherswithcapacity;
+        }
 
-            // Initialize temp table with teacher data.
-            $this->init_temp_table($teacherids, $projetvetid);
+        // Always initialize the temp table, even when there are no teachers, so that the join and
+        // columns referencing it (added in add_columns()) resolve against an existing table.
+        $this->init_temp_table($teacherids, $projetvetid);
 
+        if (!empty($teacherids)) {
             [$insql, $inparams] = $DB->get_in_or_equal($teacherids, SQL_PARAMS_NAMED, database::generate_param_name());
             $this->add_base_condition_sql("{$entityuseralias}.id $insql", $inparams);
         } else {

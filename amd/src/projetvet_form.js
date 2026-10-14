@@ -450,6 +450,51 @@ export const init = async() => {
         modalForm.show();
     });
 
+    // Handle the archive (projects already validated with the previous system) button.
+    // The archived projects are subset entries of the archive entry, so make sure the
+    // archive entry exists before opening its form.
+    document.addEventListener('click', async(event) => {
+        const button = event.target.closest('[data-action="archive-entry-form"]');
+        if (!button) {
+            return;
+        }
+        event.preventDefault();
+
+        const pending = new Pending('mod_projetvet/projetvet_form_archive_entry');
+        let archive;
+        try {
+            archive = await Repository.getArchiveEntry({
+                cmid: parseInt(button.dataset.cmid),
+                studentid: parseInt(button.dataset.studentid),
+            });
+        } catch (error) {
+            pending.resolve();
+            return;
+        }
+
+        const modalForm = new ModalForm({
+            moduleName: 'core/modal',
+            formClass: '\\mod_projetvet\\form\\projetvet_form',
+            args: {
+                cmid: button.dataset.cmid,
+                projetvetid: button.dataset.projetvetid,
+                studentid: button.dataset.studentid,
+                formsetidnumber: button.dataset.formsetidnumber,
+                entryid: archive.entryid,
+            },
+        });
+
+        modalForm.addEventListener(modalForm.events.LOADED, () => {
+            modalForm.modal.getModal().addClass('modal-fullscreen-form');
+        });
+
+        trackFormOpen(modalForm);
+        trackFormSubmission(modalForm);
+        modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, submitEventHandler);
+        modalForm.show();
+        pending.resolve();
+    });
+
     // Make entry table rows clickable - trigger the edit/view action when row is clicked.
     document.addEventListener('click', (event) => {
         const row = event.target.closest('tr.projetvet-entry-row');

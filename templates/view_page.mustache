@@ -31,6 +31,11 @@
         "activitiesheading": "Activities",
         "showactivitiesbutton": true,
         "activitiesbuttonlabel": "Add activity",
+        "showactionbuttons": true,
+        "archivewaitingmessage": "Your archive is waiting for your tutor",
+        "showarchivebutton": true,
+        "archivebuttonlabel": "Archive projects already validated with the previous system",
+        "archiveformsetidnumber": "archive",
         "activitiesreport": "<div>Report HTML</div>",
         "facetofaceheading": "Face-to-face sessions",
         "showfacetofacebutton": true,
@@ -44,8 +49,15 @@
  {{{activitiesinfobox}}}
 </div>
 
-{{#showactivitiesbutton}}
-<div class="mb-3">
+{{#archivewaitingmessage}}
+<div class="alert alert-info" role="status">
+    {{{archivewaitingmessage}}}
+</div>
+{{/archivewaitingmessage}}
+
+{{#showactionbuttons}}
+<div class="mb-3 d-flex flex-wrap gap-2">
+    {{#showactivitiesbutton}}
     <button class="btn btn-primary"
             data-action="activity-entry-form"
             data-cmid="{{cmid}}"
@@ -54,8 +66,19 @@
             data-formsetidnumber="activities">
         {{activitiesbuttonlabel}}
     </button>
+    {{/showactivitiesbutton}}
+    {{#showarchivebutton}}
+    <button class="btn btn-secondary"
+            data-action="archive-entry-form"
+            data-cmid="{{cmid}}"
+            data-projetvetid="{{projetvetid}}"
+            data-studentid="{{studentid}}"
+            data-formsetidnumber="{{archiveformsetidnumber}}">
+        {{archivebuttonlabel}}
+    </button>
+    {{/showarchivebutton}}
 </div>
-{{/showactivitiesbutton}}
+{{/showactionbuttons}}
 
 {{{activitiesreport}}}
 

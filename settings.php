@@ -132,6 +132,24 @@ if ($hassiteconfig) {
             )
         );
 
+        // Archive of projects already validated with the previous system.
+        $settings->add(
+            new admin_setting_heading(
+                'mod_projetvet/archive_heading',
+                get_string('archive_heading', 'mod_projetvet'),
+                get_string('archive_heading_desc', 'mod_projetvet'),
+            )
+        );
+
+        $settings->add(
+            new admin_setting_configcheckbox(
+                'mod_projetvet/archive_enabled',
+                get_string('archive_enabled', 'mod_projetvet'),
+                get_string('archive_enabled_desc', 'mod_projetvet'),
+                1
+            )
+        );
+
         // Permissions settings.
         $settings->add(
             new admin_setting_heading(

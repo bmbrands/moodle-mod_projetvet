@@ -64,6 +64,23 @@ class Repository {
     }
 
     /**
+     * Get (and create on first use) the archive entry of a student.
+     * @param {Object} args The arguments containing cmid and studentid.
+     * @return {Promise} The promise.
+     */
+    getArchiveEntry(args) {
+        const request = {
+            methodname: 'mod_projetvet_get_archive_entry',
+            args: args
+        };
+
+        let promise = Ajax.call([request])[0]
+            .fail(Notification.exception);
+
+        return promise;
+    }
+
+    /**
      * Get suggested ECTS for given hours and rang.
      * @param {Object} args The arguments containing projetvetid, studentid, entryid, hours, stringidentifier, rangvalue, finalects.
      * @return {Promise} The promise.

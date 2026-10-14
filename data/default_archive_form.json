@@ -1,0 +1,174 @@
+{
+  "categories": [
+    {
+      "name": "Projets déjà validés avec l'ancien système",
+      "idnumber": "archive_student",
+      "description": "Saisie par l'étudiant des projets déjà validés avec l'ancien système",
+      "capability": "submit",
+      "entrystatus": 0,
+      "statusmsg": "archivedraft",
+      "fields": [
+        {
+          "idnumber": "archive_student_info",
+          "name": "Information",
+          "type": "html",
+          "description": "",
+          "configdata": {
+            "readonly": true,
+            "string": "archive_student_info_value"
+          },
+          "capability": "viewown",
+          "entrystatus": 0,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_tutor_check_info",
+          "name": "Information",
+          "type": "html",
+          "description": "",
+          "configdata": {
+            "readonly": true,
+            "string": "archive_tutor_check_info_value"
+          },
+          "capability": "viewteacher",
+          "entrystatus": 0,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_projects",
+          "name": "Projets archivés",
+          "type": "subset",
+          "description": "",
+          "configdata": {
+            "formsetidnumber": "archive_project",
+            "buttontext": "Ajouter un autre projet",
+            "buttonstring": "btn_archive_add_project"
+          },
+          "capability": "submit",
+          "entrystatus": 0,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_submit_tutor",
+          "name": "Soumettre l'ensemble des projets archivés à mon tuteur",
+          "type": "button",
+          "description": "",
+          "configdata": {
+            "text": "btn_archive_submit_tutor",
+            "icon": "fa-users",
+            "entrystatus": 1,
+            "style": "primary",
+            "submitpopup": "archivesubmittedtotutor"
+          },
+          "capability": "submit",
+          "entrystatus": 0,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_save_draft",
+          "name": "Enregistrer comme brouillon",
+          "type": "button",
+          "description": "",
+          "configdata": {
+            "text": "btn_save_draft",
+            "icon": "fa-download",
+            "entrystatus": 0,
+            "style": "secondary"
+          },
+          "capability": "submit",
+          "entrystatus": 0,
+          "listorder": 0
+        }
+      ]
+    },
+    {
+      "name": "Validation par le tuteur",
+      "idnumber": "archive_tutor",
+      "description": "Vérification et validation globale de la reprise par le tuteur",
+      "capability": "approve",
+      "entrystatus": 1,
+      "statusmsg": "archivesubmitted",
+      "fields": [
+        {
+          "idnumber": "archive_validation_date",
+          "name": "Date de validation",
+          "type": "hidden",
+          "description": "",
+          "configdata": {
+            "dateformat": "strftimedatemonthtimeshort",
+            "action": "setcurrentdate"
+          },
+          "capability": "approve",
+          "entrystatus": 1,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_validation_user",
+          "name": "Validé par",
+          "type": "hidden",
+          "description": "",
+          "configdata": {
+            "action": "setcurrentuser"
+          },
+          "capability": "approve",
+          "entrystatus": 1,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_validate_button",
+          "name": "Valider la reprise des CPP antérieurs",
+          "type": "button",
+          "description": "",
+          "configdata": {
+            "text": "btn_archive_validate",
+            "icon": "fa-check-circle",
+            "entrystatus": 2,
+            "style": "primary",
+            "submitpopup": "archivevalidated"
+          },
+          "capability": "approve",
+          "entrystatus": 1,
+          "listorder": 0
+        }
+      ]
+    },
+    {
+      "name": "Reprise validée",
+      "idnumber": "archive_locked",
+      "description": "Reprise validée et verrouillée",
+      "capability": "managearchive",
+      "entrystatus": 2,
+      "statusmsg": "archivevalidated",
+      "fields": [
+        {
+          "idnumber": "archive_locked_info",
+          "name": "Information",
+          "type": "html",
+          "description": "",
+          "configdata": {
+            "readonly": true,
+            "string": "archive_locked_info_value"
+          },
+          "capability": "managearchive",
+          "entrystatus": 2,
+          "listorder": 0
+        },
+        {
+          "idnumber": "archive_reopen_button",
+          "name": "Rouvrir la reprise",
+          "type": "button",
+          "description": "",
+          "configdata": {
+            "text": "btn_archive_reopen",
+            "icon": "fa-unlock",
+            "entrystatus": 0,
+            "style": "warning"
+          },
+          "capability": "managearchive",
+          "entrystatus": 2,
+          "listorder": 0
+        }
+      ]
+    }
+  ]
+}

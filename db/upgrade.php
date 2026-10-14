@@ -286,5 +286,15 @@ function xmldb_projetvet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026100200, 'projetvet');
     }
 
+    if ($oldversion < 2026101400) {
+        // Fix #882: Install the form sets used to archive projects already validated
+        // with the previous system (the archive and its archived project rows),
+        // including the lookup data of the archived project category field.
+        \mod_projetvet\setup::import_form_sets(['archive', 'archive_project']);
+
+        // Projetvet savepoint reached.
+        upgrade_mod_savepoint(true, 2026101400, 'projetvet');
+    }
+
     return true;
 }

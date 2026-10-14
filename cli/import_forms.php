@@ -53,7 +53,7 @@ if ($options['help']) {
 Options:
 -h, --help          Print this help
 -r, --reset         Delete all existing form data before importing
--f, --formset=NAME  Import only specified form set (activities or facetoface)
+-f, --formset=NAME  Import only specified form set (see mod_projetvet\setup::DEFAULT_FORM_SETS)
 
 Examples:
 # Import all form sets
@@ -70,6 +70,10 @@ php import_forms.php --formset=facetoface
 
 # Import only thesis form set
 php import_forms.php --formset=thesis
+
+# Import the archive of projects validated with the previous system
+php import_forms.php --formset=archive
+php import_forms.php --formset=archive_project
 ";
     exit(0);
 }

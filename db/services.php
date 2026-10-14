@@ -34,6 +34,14 @@ $functions = [
         'ajax'          => true,
         'capabilities'  => 'mod/projetvet:view',
     ],
+    'mod_projetvet_get_archive_entry' => [
+        'classname'     => 'mod_projetvet\external\get_archive_entry',
+        'methodname'    => 'execute',
+        'description'   => 'Get (and create on first use) the archive of previously validated projects of a student',
+        'type'          => 'write',
+        'ajax'          => true,
+        'capabilities'  => 'mod/projetvet:view',
+    ],
     'mod_projetvet_get_entry_list' => [
         'classname'     => 'mod_projetvet\external\entry_list',
         'methodname'    => 'execute',

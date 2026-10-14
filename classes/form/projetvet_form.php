@@ -652,6 +652,9 @@ class projetvet_form extends dynamic_form {
                         // Get subset configuration.
                         $subsetformsetidnumber = $configdata['formsetidnumber'] ?? '';
                         $buttontext = $configdata['buttontext'] ?? 'Add entry';
+                        if (!empty($configdata['buttonstring'])) {
+                            $buttontext = get_string($configdata['buttonstring'], 'mod_projetvet');
+                        }
 
                         $mform->addElement('subset', $fieldname, $field->name, '', [
                             'subsetformsetidnumber' => $subsetformsetidnumber,

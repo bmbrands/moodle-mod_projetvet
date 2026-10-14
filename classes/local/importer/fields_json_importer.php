@@ -265,7 +265,7 @@ class fields_json_importer {
             $jsonfile = null;
             if ($field->get('idnumber') === 'competency') {
                 $jsonfile = $CFG->dirroot . '/mod/projetvet/data/complist.json';
-            } else if ($field->get('idnumber') === 'category') {
+            } else if (in_array($field->get('idnumber'), ['category', 'archive_category'])) {
                 $jsonfile = $CFG->dirroot . '/mod/projetvet/data/categories.json';
             }
 

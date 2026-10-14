@@ -65,6 +65,18 @@ class setup {
             'sortorder' => 5,
             'jsonfile' => 'default_teacherinfo_form.json',
         ],
+        'archive' => [
+            'name' => 'Archive',
+            'description' => 'Archive of projects already validated with the previous system',
+            'sortorder' => 6,
+            'jsonfile' => 'default_archive_form.json',
+        ],
+        'archive_project' => [
+            'name' => 'Archived project',
+            'description' => 'A project already validated with the previous system',
+            'sortorder' => 7,
+            'jsonfile' => 'default_archive_project_form.json',
+        ],
     ];
     /**
      * Create the default activity fields.
@@ -72,10 +84,24 @@ class setup {
      * @return void
      */
     public static function create_default_activities() {
+        self::import_form_sets(array_keys(self::DEFAULT_FORM_SETS));
+    }
+
+    /**
+     * Import (create or update) the given default form sets and the tagselect lookup data.
+     *
+     * @param string[] $idnumbers The form set idnumbers, keys of {@see self::DEFAULT_FORM_SETS}
+     * @return void
+     */
+    public static function import_form_sets(array $idnumbers): void {
         global $CFG;
 
-        // Import each form set.
-        foreach (self::DEFAULT_FORM_SETS as $idnumber => $config) {
+        foreach ($idnumbers as $idnumber) {
+            if (!isset(self::DEFAULT_FORM_SETS[$idnumber])) {
+                debugging("Unknown form set: {$idnumber}", DEBUG_DEVELOPER);
+                continue;
+            }
+            $config = self::DEFAULT_FORM_SETS[$idnumber];
             $jsonfile = $CFG->dirroot . '/mod/projetvet/data/' . $config['jsonfile'];
 
             if (!file_exists($jsonfile)) {
@@ -94,5 +120,7 @@ class setup {
 
         // Import field lookup data for tagselect fields.
         fields_json_importer::import_field_lookup_data();
+
+        \cache::make('mod_projetvet', 'activitystructures')->purge();
     }
 }

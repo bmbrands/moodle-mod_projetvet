@@ -16,6 +16,7 @@
 
 namespace mod_projetvet\output;
 
+use mod_projetvet\local\api\archive;
 use mod_projetvet\local\persistent\form_entry;
 use mod_projetvet\local\persistent\form_data;
 use mod_projetvet\local\persistent\form_field;
@@ -68,8 +69,10 @@ class chart_data {
                 AND fieldid = :fieldid";
 
         $result = $DB->get_record_sql($sql, $params);
+        $total = $result && $result->total ? (int)$result->total : 0;
 
-        return $result && $result->total ? (int)$result->total : 0;
+        // Add the validated ECTS of the projects already validated with the previous system.
+        return $total + archive::get_validated_ects($projetvetid, $studentid)['total'];
     }
 
     /**
@@ -132,9 +135,12 @@ class chart_data {
             }
         }
 
+        // Add the validated ECTS of the projects already validated with the previous system.
+        $archived = archive::get_validated_ects($projetvetid, $studentid);
+
         return [
-            'rank_a' => $rankatotal,
-            'rank_b' => $rankbtotal,
+            'rank_a' => $rankatotal + $archived['rank_a'],
+            'rank_b' => $rankbtotal + $archived['rank_b'],
         ];
     }
 

@@ -23,9 +23,11 @@ global $CFG;
 use context;
 use context_module;
 use core_form\dynamic_form;
+use mod_projetvet\local\api\archive;
 use mod_projetvet\local\api\entries;
 use mod_projetvet\local\persistent\form_entry;
 use mod_projetvet\local\persistent\form_field;
+use mod_projetvet\local\persistent\form_set;
 use mod_projetvet\local\persistent\field_data;
 use moodle_exception;
 use moodle_url;
@@ -73,9 +75,19 @@ class projetvet_form extends dynamic_form {
             $entrystatus = $nextstatus;
         }
 
+        $formsetidnumber = $data->formsetidnumber ?? 'activities';
+        $archive = $this->get_archive_for_submission($formsetidnumber);
+        if ($formsetidnumber === archive::FORMSET && $archive) {
+            // The archive workflow is a fixed sequence of steps, check the requested one.
+            archive::require_status_transition($archive, $entrystatus);
+        } else if ($formsetidnumber === archive::PROJECT_FORMSET && $archive) {
+            // Archived projects follow the status of their archive.
+            $currententrystatus = (int) $archive->get('entrystatus');
+            $entrystatus = $currententrystatus;
+        }
+
         // Extract field values from form data - only for categories user can edit.
         $fields = [];
-        $formsetidnumber = $data->formsetidnumber ?? 'activities';
         $context = $this->get_context_for_dynamic_submission();
         $structure = entries::get_form_structure($formsetidnumber, $currententrystatus, $context);
 
@@ -143,6 +155,10 @@ class projetvet_form extends dynamic_form {
             );
         }
 
+        if ($formsetidnumber === archive::FORMSET && $archive) {
+            archive::sync_project_statuses(new form_entry($entryid));
+        }
+
         $result = [
             'result' => true,
             'entryid' => $entryid,
@@ -208,6 +224,12 @@ class projetvet_form extends dynamic_form {
         $context = $this->get_context_for_dynamic_submission();
         $entryid = $this->optional_param('entryid', 0, PARAM_INT);
 
+        $formsetidnumber = $this->optional_param('formsetidnumber', 'activities', PARAM_ALPHANUMEXT);
+        if (archive::is_archive_formset($formsetidnumber)) {
+            $this->check_archive_access($formsetidnumber, $context);
+            return;
+        }
+
         if ($entryid) {
             // Check if user can edit this entry.
             $entry = entries::get_entry($entryid);
@@ -220,6 +242,64 @@ class projetvet_form extends dynamic_form {
                 throw new moodle_exception('invalidaccess');
             }
         }
+    }
+
+    /**
+     * Check access to the archive (and archived project) forms.
+     *
+     * @param string $formsetidnumber
+     * @param context $context
+     * @return void
+     * @throws moodle_exception
+     */
+    protected function check_archive_access(string $formsetidnumber, context $context): void {
+        global $USER;
+
+        $archive = $this->get_archive_for_submission($formsetidnumber);
+        if (!$archive || !archive::can_open($context, $archive->get('projetvetid'), $archive->get('studentid'), $USER->id)) {
+            throw new moodle_exception('archivenoaccess', 'mod_projetvet');
+        }
+        if ($context->instanceid != get_coursemodule_from_instance('projetvet', $archive->get('projetvetid'))->id) {
+            throw new moodle_exception('archivenoaccess', 'mod_projetvet');
+        }
+        if ($formsetidnumber === archive::PROJECT_FORMSET) {
+            $readonly = $this->optional_param('readonly', 0, PARAM_INT);
+            $entryid = $this->optional_param('entryid', 0, PARAM_INT);
+            if ($entryid) {
+                $entry = new form_entry($entryid);
+                if ($entry->get('parententryid') != $archive->get('id')) {
+                    throw new moodle_exception('archivenoaccess', 'mod_projetvet');
+                }
+            }
+            // Adding a project, or saving one, requires the right to edit the archived projects.
+            // Access is checked before the form is built, so detect a submission from its marker.
+            $issubmission = !empty($this->_ajaxformdata['_qf__' . $this->get_form_identifier()]);
+            if (($issubmission || (!$entryid && !$readonly)) && !archive::can_edit_projects($archive)) {
+                throw new moodle_exception('archivenoaccess', 'mod_projetvet');
+            }
+        }
+    }
+
+    /**
+     * Get the archive entry the archive (or archived project) form relates to.
+     *
+     * @param string $formsetidnumber
+     * @return form_entry|null The archive entry, null for other form sets or when not found
+     */
+    protected function get_archive_for_submission(string $formsetidnumber): ?form_entry {
+        if ($formsetidnumber === archive::FORMSET) {
+            $archiveid = $this->optional_param('entryid', 0, PARAM_INT);
+        } else if ($formsetidnumber === archive::PROJECT_FORMSET) {
+            $archiveid = $this->optional_param('parententryid', 0, PARAM_INT);
+        } else {
+            return null;
+        }
+        $archive = $archiveid ? form_entry::get_record(['id' => $archiveid]) : null;
+        if (!$archive) {
+            return null;
+        }
+        $formset = form_set::get_record(['id' => $archive->get('formsetid')]);
+        return ($formset && $formset->get('idnumber') === archive::FORMSET) ? $archive : null;
     }
 
     /**
@@ -309,11 +389,7 @@ class projetvet_form extends dynamic_form {
         $context = context_module::instance($cmid);
 
         // Get current entry status if editing.
-        $currententrystatus = 0;
-        if ($entryid) {
-            $entry = entries::get_entry($entryid);
-            $currententrystatus = $entry->entrystatus;
-        }
+        $currententrystatus = $this->get_current_entry_status($entryid, $formsetidnumber);
 
         // Get the activity structure with hydrated permissions and add fields.
         $structure = entries::get_form_structure($formsetidnumber, $currententrystatus, $context);
@@ -739,6 +815,27 @@ class projetvet_form extends dynamic_form {
     }
 
     /**
+     * Get the status of the entry being edited.
+     *
+     * New entries start as drafts, except archived projects that follow the status of
+     * their archive (so that a tutor can add a missing project while checking it).
+     *
+     * @param int $entryid
+     * @param string $formsetidnumber
+     * @return int
+     */
+    protected function get_current_entry_status(int $entryid, string $formsetidnumber): int {
+        if ($entryid) {
+            return (int) entries::get_entry($entryid)->entrystatus;
+        }
+        if ($formsetidnumber === archive::PROJECT_FORMSET) {
+            $archive = $this->get_archive_for_submission($formsetidnumber);
+            return $archive ? (int) $archive->get('entrystatus') : 0;
+        }
+        return 0;
+    }
+
+    /**
      * Set data for dynamic submission
      *
      * @return void
@@ -757,6 +854,9 @@ class projetvet_form extends dynamic_form {
             'readonly' => $this->optional_param('readonly', 0, PARAM_INT),
             'entrystatus' => 0, // Default to draft for new entries.
         ];
+        if (empty($data['entryid'])) {
+            $data['entrystatus'] = $this->get_current_entry_status(0, $formsetidnumber);
+        }
 
         // If editing an existing entry, load its data.
         if (!empty($data['entryid'])) {
@@ -1004,6 +1104,15 @@ class projetvet_form extends dynamic_form {
                 if ($isempty) {
                     $errors[$fieldname] = get_string('required', 'moodle');
                 }
+            }
+        }
+
+        // An archive can only be submitted to the tutor (or validated) when it holds projects.
+        $formsetidnumber = $data['formsetidnumber'] ?? '';
+        if ($isfinalsubmission && $formsetidnumber === archive::FORMSET) {
+            $archive = $this->get_archive_for_submission($formsetidnumber);
+            if ($archive && empty(archive::get_project_entries($archive))) {
+                $errors['field_archive_projects'] = get_string('archivenoprojects', 'mod_projetvet');
             }
         }
 

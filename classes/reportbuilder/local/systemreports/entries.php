@@ -21,6 +21,7 @@ use core_reportbuilder\local\report\action;
 use core_reportbuilder\local\report\column;
 use core_reportbuilder\system_report;
 use lang_string;
+use mod_projetvet\local\api\archive;
 use mod_projetvet\local\persistent\form_field;
 use mod_projetvet\reportbuilder\local\entities\form_entry;
 use core\url as moodle_url;
@@ -34,6 +35,9 @@ use pix_icon;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class entries extends system_report {
+    /** @var int The archived project form set listed with the entries (0 for none) */
+    protected int $archiveformsetid = 0;
+
     /**
      * Initialise report
      */
@@ -66,7 +70,7 @@ class entries extends system_report {
 
         // Base fields.
         $this->add_base_fields("{$entityentryalias}.id, {$entityentryalias}.entrystatus,
-            {$entityentryalias}.timemodified");
+            {$entityentryalias}.timemodified, {$entityentryalias}.formsetid");
 
         // Filter by projetvet instance, student, and formset.
         $paramprojetvet = database::generate_param_name();
@@ -77,19 +81,34 @@ class entries extends system_report {
         $isteacher = $studentid != $USER->id;
         $statusfilter = $isteacher ? "{$entityentryalias}.entrystatus > 0" : "{$entityentryalias}.entrystatus >= 0";
 
+        $formsetsql = "{$entityentryalias}.formsetid = :{$paramformset} AND {$statusfilter}";
+        $params = [
+            $paramprojetvet => $projetvetid,
+            $paramstudent => $studentid,
+            $paramformset => $formset->id,
+        ];
+
+        // The projects already validated with the previous system ("Projet repris") are
+        // summary records listed with the activities once the tutor validated the archive.
+        $archiveformset = $this->get_archive_project_formset($formsetidnumber);
+        $this->archiveformsetid = $archiveformset ? (int) $archiveformset->id : 0;
+        if ($archiveformset) {
+            $paramarchiveformset = database::generate_param_name();
+            $paramarchivestatus = database::generate_param_name();
+            $formsetsql = "(({$formsetsql}) OR ({$entityentryalias}.formsetid = :{$paramarchiveformset}
+                AND {$entityentryalias}.entrystatus = :{$paramarchivestatus}))";
+            $params[$paramarchiveformset] = $archiveformset->id;
+            $params[$paramarchivestatus] = archive::STATUS_VALIDATED;
+        }
+
         $this->add_base_condition_sql(
             "{$entityentryalias}.projetvetid = :{$paramprojetvet}
             AND {$entityentryalias}.studentid = :{$paramstudent}
-            AND {$entityentryalias}.formsetid = :{$paramformset}
-            AND {$statusfilter}",
-            [
-                $paramprojetvet => $projetvetid,
-                $paramstudent => $studentid,
-                $paramformset => $formset->id,
-            ]
+            AND {$formsetsql}",
+            $params
         );
 
-        $this->add_columns($formset->id);
+        $this->add_columns($formset->id, $archiveformset ? $archiveformset->id : 0);
         $this->add_filters();
         $this->add_actions($cmid, $formsetidnumber);
 
@@ -129,11 +148,56 @@ class entries extends system_report {
     }
 
     /**
+     * Get the archived project form set listed together with the given form set.
+     *
+     * @param string $formsetidnumber
+     * @return \stdClass|null The archived project form set record, null when not applicable
+     */
+    protected function get_archive_project_formset(string $formsetidnumber): ?\stdClass {
+        global $DB;
+
+        if ($formsetidnumber !== 'activities') {
+            return null;
+        }
+        return $DB->get_record('projetvet_form_set', ['idnumber' => archive::PROJECT_FORMSET]) ?: null;
+    }
+
+    /**
+     * Get the archived project fields displayed in the activity columns, keyed by activity field idnumber.
+     *
+     * Archived project fields name the activity field they are shown with in their configdata
+     * ("reportfield").
+     *
+     * @param int $archiveformsetid
+     * @return \stdClass[]
+     */
+    protected function get_archive_report_fields(int $archiveformsetid): array {
+        global $DB;
+
+        $fields = $DB->get_records_sql("
+            SELECT ff.*
+            FROM {projetvet_form_field} ff
+            JOIN {projetvet_form_cat} fc ON ff.categoryid = fc.id
+            WHERE fc.formsetid = :formsetid
+        ", ['formsetid' => $archiveformsetid]);
+
+        $reportfields = [];
+        foreach ($fields as $field) {
+            $configdata = json_decode(stripslashes((string) $field->configdata), true);
+            if (!empty($configdata['reportfield'])) {
+                $reportfields[$configdata['reportfield']] = $field;
+            }
+        }
+        return $reportfields;
+    }
+
+    /**
      * Add columns to the report
      *
      * @param int $formsetid
+     * @param int $archiveformsetid The archived project form set listed with the entries (0 for none)
      */
-    protected function add_columns(int $formsetid): void {
+    protected function add_columns(int $formsetid, int $archiveformsetid = 0): void {
         global $DB;
 
         $entityentry = $this->get_entity('form_entry');
@@ -149,9 +213,11 @@ class entries extends system_report {
             ORDER BY ff.listorder ASC
         ", ['formsetid' => $formsetid]);
 
+        $archivefields = $archiveformsetid ? $this->get_archive_report_fields($archiveformsetid) : [];
+
         // Add dynamic columns for each field.
         foreach ($fields as $field) {
-            $this->add_field_column($field, $entityentryalias);
+            $this->add_field_column($field, $entityentryalias, $archivefields[$field->idnumber] ?? null);
         }
 
         // Add time modified column.
@@ -168,8 +234,9 @@ class entries extends system_report {
      *
      * @param \stdClass $field
      * @param string $entityentryalias
+     * @param \stdClass|null $archivefield The archived project field shown in the same column
      */
-    protected function add_field_column(\stdClass $field, string $entityentryalias): void {
+    protected function add_field_column(\stdClass $field, string $entityentryalias, ?\stdClass $archivefield = null): void {
         global $DB;
 
         $fieldpersistent = new form_field(0, $field);
@@ -184,6 +251,18 @@ class entries extends system_report {
             ON {$dataalias}.entryid = {$entityentryalias}.id
             AND {$dataalias}.fieldid = {$field->id}");
 
+        $valuesql = "{$dataalias}.{$datacolumn}";
+        $fieldidsql = "{$dataalias}.fieldid";
+        if ($archivefield && $archivefield->type === $field->type) {
+            // Archived project rows take their value from the matching archived project field.
+            $archivedataalias = 'archivedata_' . $field->id;
+            $this->add_join("LEFT JOIN {projetvet_form_data} {$archivedataalias}
+                ON {$archivedataalias}.entryid = {$entityentryalias}.id
+                AND {$archivedataalias}.fieldid = {$archivefield->id}");
+            $valuesql = "COALESCE({$valuesql}, {$archivedataalias}.{$datacolumn})";
+            $fieldidsql = "COALESCE({$fieldidsql}, {$archivedataalias}.fieldid)";
+        }
+
         // Get report parameters for use in callback.
         $studentid = $this->get_parameter('studentid', 0, PARAM_INT);
         $cmid = $this->get_parameter('cmid', 0, PARAM_INT);
@@ -194,8 +273,8 @@ class entries extends system_report {
             new lang_string('field_' . $field->idnumber . '_column', 'mod_projetvet'),
             'form_entry'
         ))
-            ->add_field("{$dataalias}.{$datacolumn}", $fieldalias)
-            ->add_field("{$dataalias}.fieldid", $fieldalias . '_fieldid')
+            ->add_field($valuesql, $fieldalias)
+            ->add_field($fieldidsql, $fieldalias . '_fieldid')
             ->set_type(column::TYPE_TEXT)
             ->set_is_sortable(true)
             ->add_callback(static function ($value, $row) use ($fieldpersistent, $fieldalias, $studentid, $cmid): string {
@@ -275,6 +354,12 @@ class entries extends system_report {
         $cm = get_coursemodule_from_id('projetvet', $cmid);
         $context = \context_module::instance($cm->id);
 
+        // Archived project ("Projet repris") rows are summary records only: they cannot be opened, edited or deleted.
+        $archiveformsetid = $this->archiveformsetid;
+        $isentry = static function (\stdClass $row) use ($archiveformsetid): bool {
+            return (int) $row->formsetid !== $archiveformsetid;
+        };
+
         // View action (always available).
         $this->add_action((new action(
             new moodle_url('#'),
@@ -290,7 +375,7 @@ class entries extends system_report {
             ],
             false,
             new lang_string('view'),
-        )));
+        ))->add_callback($isentry));
 
         // Edit action (for students viewing their own entries or teachers with approve capability).
         if (!$isteacher || has_capability('mod/projetvet:approve', $context)) {
@@ -308,7 +393,7 @@ class entries extends system_report {
                 ],
                 false,
                 new lang_string('edit'),
-            )));
+            ))->add_callback($isentry));
         }
 
         // Delete action (for students viewing their own entries with entrystatus 0).
@@ -323,8 +408,8 @@ class entries extends system_report {
                 false,
                 new lang_string('delete'),
             ))
-                ->add_callback(static function (\stdClass $row): bool {
-                    return ($row->entrystatus == 0 || $row->entrystatus == 1);
+                ->add_callback(static function (\stdClass $row) use ($isentry): bool {
+                    return $isentry($row) && ($row->entrystatus == 0 || $row->entrystatus == 1);
                 }));
         }
     }
@@ -336,6 +421,10 @@ class entries extends system_report {
      * @return string
      */
     public function get_row_class(\stdClass $row): string {
+        if ($this->archiveformsetid && (int) $row->formsetid === $this->archiveformsetid) {
+            // Archived project ("Projet repris") rows cannot be opened.
+            return 'projetvet-archived-row';
+        }
         return 'projetvet-entry-row';
     }
 }

@@ -17,6 +17,7 @@
 namespace mod_projetvet\local\persistent;
 
 use core\persistent;
+use mod_projetvet\local\api\archive;
 
 /**
  * Activity entry entity
@@ -112,6 +113,18 @@ class form_entry extends persistent {
      */
     public function can_delete(): bool {
         global $USER;
+
+        // Archives are never deleted, archived projects only while the archive can be edited.
+        $formset = form_set::get_record(['id' => $this->get('formsetid')]);
+        $formsetidnumber = $formset ? $formset->get('idnumber') : '';
+        if ($formsetidnumber === archive::FORMSET) {
+            return false;
+        }
+        if ($formsetidnumber === archive::PROJECT_FORMSET) {
+            $archive = self::get_record(['id' => $this->get('parententryid')]);
+            return $archive && archive::can_edit_projects($archive);
+        }
+
         // Students can delete their own entries.
         if ($this->get('studentid') == $USER->id) {
             return true;

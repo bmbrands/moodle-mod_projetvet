@@ -61,6 +61,7 @@ $string['archivebutton_review'] = 'Check the archive of previous CPP';
 $string['archivebutton_student'] = 'Archive projects already validated with the previous system';
 $string['archivebutton_view'] = 'View the archive of previous CPP';
 $string['archivenoaccess'] = 'You cannot access this archive of previous projects.';
+$string['archivenoprojects'] = 'Add at least one project before submitting the archive.';
 $string['archivesubmittedtotutor'] = '<h5>Archive submitted to your tutor</h5><p>Your archive of previous projects is ready to be checked by your tutor. Remember to contact them directly so that they can validate all the information entered, and then check your dashboard.</p>';
 $string['archivevalidated'] = '<h5>Archive validated</h5><p>The archive of previous CPP has been validated. You can let your student know.</p>';
 $string['archivewaitingtutor'] = 'Your archive of previous projects is ready to be checked by your tutor. Remember to contact them directly so that they can validate all the information entered, and then check your dashboard.';

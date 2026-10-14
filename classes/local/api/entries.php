@@ -106,7 +106,7 @@ class entries {
 
         // Hydrate canview and canedit properties if entrystatus and context are provided.
         if ($entrystatus !== null && $context !== null) {
-            $structure = self::hydrate_permissions($structure, $entrystatus, $context);
+            $structure = self::hydrate_permissions($structure, $entrystatus, $context, $formsetidnumber);
         }
 
         return $structure;
@@ -120,18 +120,35 @@ class entries {
      * - Users with mod/projetvet:approve can edit approve and submit categories (unless they have unlock)
      * - Users with mod/projetvet:submit can only edit submit categories
      * - Users with mod/projetvet:unlock can only edit unlock categories
+     * - In the archive form sets, users with mod/projetvet:managearchive can edit the categories
+     *   of the current status and the submit categories of the previous status (they act as the
+     *   student, the tutor or the administrator depending on the archive status)
      *
      * @param array $structure The form structure
      * @param int $entrystatus The current entry status
      * @param \context $context The module context
+     * @param string $formsetidnumber The form set idnumber
      * @return array The structure with hydrated permissions
      */
-    private static function hydrate_permissions(array $structure, int $entrystatus, \context $context): array {
+    private static function hydrate_permissions(
+        array $structure,
+        int $entrystatus,
+        \context $context,
+        string $formsetidnumber = 'activities'
+    ): array {
         $hasunlock = has_capability('mod/projetvet:unlock', $context);
         $hasapprove = has_capability('mod/projetvet:approve', $context);
         $hassubmit = has_capability('mod/projetvet:submit', $context);
+        $ismanager = archive::is_archive_formset($formsetidnumber)
+            && has_capability('mod/projetvet:managearchive', $context);
 
         foreach ($structure as $category) {
+            if ($ismanager) {
+                $category->canview = $category->entrystatus <= $entrystatus;
+                $category->canedit = $category->entrystatus == $entrystatus
+                    || ($category->capability === 'submit' && $category->entrystatus == ($entrystatus - 1));
+                continue;
+            }
             if ($category->capability === 'all' || $category->capability === 'alledit') {
                 // Categories with 'all' capability are always viewable and editable.
                 $category->canview = true;
@@ -295,6 +312,11 @@ class entries {
      * @return bool
      */
     public static function can_edit_category(object $category, int $currententrystatus, \context $context): bool {
+        if ($category->capability == 'managearchive') {
+            // Only archive managers can edit the locked archive categories.
+            return has_capability('mod/projetvet:managearchive', $context)
+                && $category->entrystatus == $currententrystatus;
+        }
         if ($category->capability == 'approve') {
             // Only users with approve capability can edit approve categories.
             return has_capability('mod/projetvet:approve', $context);
@@ -351,6 +373,11 @@ class entries {
             }
             // Additionally, for viewteacher, the user must not be the student who owns the entry.
             return $USER->id !== $studentid;
+        }
+
+        // Fields of the locked archive categories are only meant for archive managers.
+        if ($field->capability === 'managearchive') {
+            return has_capability('mod/projetvet:managearchive', $context);
         }
 
         // For now all else goes.

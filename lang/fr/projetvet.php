@@ -61,6 +61,7 @@ $string['archivebutton_review'] = 'Vérifier la reprise des CPP antérieurs';
 $string['archivebutton_student'] = 'Archiver des projets déjà validés avec l\'ancien système';
 $string['archivebutton_view'] = 'Voir la reprise des CPP antérieurs';
 $string['archivenoaccess'] = 'Vous ne pouvez pas accéder à cette reprise de projets antérieurs.';
+$string['archivenoprojects'] = 'Ajoutez au moins un projet avant de soumettre la reprise.';
 $string['archivesubmittedtotutor'] = '<h5>Reprise soumise à votre tuteur</h5><p>Votre reprise de projets antérieurs est prête à être vérifiée par votre tuteur. Pensez à le contacter directement afin qu\'il puisse valider l\'ensemble des informations saisies et vérifier ensuite sur votre tableau de bord.</p>';
 $string['archivevalidated'] = '<h5>Reprise validée</h5><p>La reprise des CPP antérieurs a bien été validée. Vous pouvez prévenir votre étudiant.e.</p>';
 $string['archivewaitingtutor'] = 'Votre reprise de projets antérieurs est prête à être vérifiée par votre tuteur. Pensez à le contacter directement afin qu\'il puisse valider l\'ensemble des informations saisies et vérifier ensuite sur votre tableau de bord.';

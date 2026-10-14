@@ -256,8 +256,10 @@ class utils {
         ];
 
         $result = $DB->get_record_sql($sql, $params);
+        $total = $result ? (int)$result->total : 0;
 
-        return $result ? (int)$result->total : 0;
+        // Add the validated ECTS of the projects already validated with the previous system.
+        return $total + \mod_projetvet\local\api\archive::get_validated_ects($projetvetid, $studentid)['total'];
     }
 
     /**

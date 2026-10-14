@@ -365,9 +365,13 @@ class projetvet_form extends dynamic_form {
         $readonly = $this->optional_param('readonly', 0, PARAM_INT);
 
         $mform->addElement('hidden', 'cmid', $cmid);
+        $mform->setType('cmid', PARAM_INT);
         $mform->addElement('hidden', 'projetvetid', $projetvetid);
+        $mform->setType('projetvetid', PARAM_INT);
         $mform->addElement('hidden', 'studentid', $studentid);
+        $mform->setType('studentid', PARAM_INT);
         $mform->addElement('hidden', 'entryid', $entryid);
+        $mform->setType('entryid', PARAM_INT);
         $mform->addElement('hidden', 'parententryid', $parententryid);
         $mform->setType('parententryid', PARAM_INT);
         $mform->addElement('hidden', 'formsetidnumber', $formsetidnumber);

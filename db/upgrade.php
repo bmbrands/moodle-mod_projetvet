@@ -286,5 +286,47 @@ function xmldb_projetvet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026100200, 'projetvet');
     }
 
+    if ($oldversion < 2026102300) {
+        // Fix #866: Define table projetvet_substitutions to be created.
+        $table = new xmldb_table('projetvet_substitutions');
+
+        // Adding fields to table projetvet_substitutions.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('projetvetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('studentid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('primarytutorid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('substitutetutorid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('startdate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('enddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('reason', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('notifyprimary', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('status', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timeclosed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('closedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('createdby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table projetvet_substitutions.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('fk_projetvetid', XMLDB_KEY_FOREIGN, ['projetvetid'], 'projetvet', ['id']);
+        $table->add_key('fk_studentid', XMLDB_KEY_FOREIGN, ['studentid'], 'user', ['id']);
+        $table->add_key('fk_primarytutorid', XMLDB_KEY_FOREIGN, ['primarytutorid'], 'user', ['id']);
+        $table->add_key('fk_substitutetutorid', XMLDB_KEY_FOREIGN, ['substitutetutorid'], 'user', ['id']);
+
+        // Adding indexes to table projetvet_substitutions.
+        $table->add_index('projetvet_student', XMLDB_INDEX_NOTUNIQUE, ['projetvetid', 'studentid']);
+        $table->add_index('projetvet_status', XMLDB_INDEX_NOTUNIQUE, ['projetvetid', 'status']);
+
+        // Conditionally launch create table for projetvet_substitutions.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Projetvet savepoint reached.
+        upgrade_mod_savepoint(true, 2026102300, 'projetvet');
+    }
+
     return true;
 }

@@ -125,6 +125,9 @@ function projetvet_delete_instance($id) {
         calendar_event::load($event)->delete();
     }
 
+    // Delete the substitute tutors history of the instance.
+    $DB->delete_records('projetvet_substitutions', ['projetvetid' => $record->id]);
+
     // Delete the instance.
     $DB->delete_records('projetvet', ['id' => $id]);
 

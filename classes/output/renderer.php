@@ -85,6 +85,16 @@ class renderer extends plugin_renderer_base {
     }
 
     /**
+     * Render the substitute tutors management page of a principal tutor.
+     *
+     * @param substitutions_page $page
+     * @return string HTML to output
+     */
+    public function render_substitutions_page(substitutions_page $page): string {
+        return $this->render_from_template('mod_projetvet/substitutions_page', $page->export_for_template($this));
+    }
+
+    /**
      * Render the "action required" notification (email + Moodle message).
      *
      * @param entry_action_required_message $message

@@ -145,6 +145,80 @@ class substitutions {
     }
 
     /**
+     * Get the students of a principal tutor (members of the groups they own), sorted by name.
+     *
+     * @param int $primarytutorid
+     * @param int $projetvetid
+     * @return \stdClass[] User records indexed by id
+     */
+    public static function get_primary_students(int $primarytutorid, int $projetvetid): array {
+        global $DB;
+
+        $groups = \mod_projetvet\local\persistent\projetvet_group::get_by_owner($primarytutorid, $projetvetid);
+        if (empty($groups)) {
+            return [];
+        }
+        $groupids = array_map(fn($group) => $group->get('id'), $groups);
+        [$insql, $params] = $DB->get_in_or_equal($groupids, SQL_PARAMS_NAMED);
+        $params['membertype'] = \mod_projetvet\local\persistent\group_member::TYPE_STUDENT;
+        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
+
+        return $DB->get_records_sql(
+            "SELECT DISTINCT u.id, {$userfields}
+               FROM {user} u
+               JOIN {projetvet_group_members} gm ON gm.userid = u.id
+              WHERE gm.groupid {$insql}
+                AND gm.membertype = :membertype
+                AND u.deleted = 0
+           ORDER BY u.lastname, u.firstname",
+            $params
+        );
+    }
+
+    /**
+     * Get the tutors of the activity that could replace a principal tutor, with the information
+     * needed to choose a substitute (status, capacity left, A1 acceptance).
+     *
+     * @param int $cmid
+     * @param int $projetvetid
+     * @param int $primarytutorid The principal tutor, excluded from the list
+     * @return array[] Arrays with id, name, status, available, acceptsa1, eligible and label
+     */
+    public static function get_candidate_tutors(int $cmid, int $projetvetid, int $primarytutorid): array {
+        $candidates = [];
+        foreach (groups::get_all_teachers($cmid) as $teacherid) {
+            $teacherid = (int) $teacherid;
+            if ($teacherid === $primarytutorid) {
+                continue;
+            }
+            $status = groups::get_teacher_status($teacherid, $projetvetid);
+            $acceptsa1 = teacher_rating::get_a1_acceptance_for($teacherid, $projetvetid) === teacher_rating::ACCEPTS_A1_YES;
+            $available = self::get_available_capacity($teacherid, $projetvetid);
+            $eligible = $status === teacher_rating::STATUS_ACTIVE_OPEN;
+            $name = fullname(\core_user::get_user($teacherid));
+
+            $candidates[] = [
+                'id' => $teacherid,
+                'name' => $name,
+                'status' => $status,
+                'available' => $available,
+                'acceptsa1' => $acceptsa1,
+                'eligible' => $eligible,
+                'label' => get_string('substitution_candidate_label', 'mod_projetvet', (object) [
+                    'name' => $name,
+                    'status' => teacher_rating::get_status_short_string_for($status),
+                    'available' => $available,
+                    'a1' => get_string($acceptsa1 ? 'a1accepts_yes' : 'a1accepts_no', 'mod_projetvet'),
+                ]),
+            ];
+        }
+
+        // Eligible tutors first, then by name.
+        usort($candidates, fn($a, $b) => [!$a['eligible'], $a['name']] <=> [!$b['eligible'], $b['name']]);
+        return $candidates;
+    }
+
+    /**
      * Get the load of a tutor: their principal students plus the students they follow as an
      * open substitute.
      *

@@ -23,6 +23,7 @@ use core_reportbuilder\local\report\column;
 use core_reportbuilder\local\report\filter;
 use lang_string;
 use mod_projetvet\local\persistent\group_member;
+use mod_projetvet\local\persistent\substitution;
 use mod_projetvet\local\persistent\teacher_rating;
 
 /**
@@ -89,6 +90,7 @@ class teacher extends base {
             'projetvet_groups',
             'user_info_data',
             'user_info_field',
+            substitution::TABLE,
         ];
     }
 
@@ -250,7 +252,64 @@ class teacher extends base {
                 return $label;
             });
 
+        // Open substitutions of the tutor's students. The status is carried as a helper field to
+        // flag the return of the principal tutor: available again while substitutions are still open.
+        $substitutionspvparam = database::generate_param_name();
+        $substitutionsstatusparam = database::generate_param_name();
+        $substitutionsteacherstatusparam = database::generate_param_name();
+        $columns[] = (new column(
+            'substitutions',
+            new lang_string('substitution_open_column', 'mod_projetvet'),
+            $this->get_entity_name()
+        ))
+            ->set_type(column::TYPE_INTEGER)
+            ->add_field(
+                $this->get_open_substitutions_sql($substitutionspvparam, $substitutionsstatusparam),
+                'opensubstitutions',
+                [
+                    $substitutionspvparam => $this->projetvetid,
+                    $substitutionsstatusparam => substitution::STATUS_OPEN,
+                ]
+            )
+            ->add_field(
+                $this->get_status_sql($substitutionsteacherstatusparam),
+                'substitutionsteacherstatus',
+                [$substitutionsteacherstatusparam => $this->projetvetid]
+            )
+            ->set_is_sortable(true)
+            ->add_callback(static function (?int $value, $row): string {
+                $count = (int) $value;
+                if ($count === 0) {
+                    return '';
+                }
+                $label = (string) $count;
+                $status = (int) ($row->substitutionsteacherstatus ?? teacher_rating::STATUS_ACTIVE_OPEN);
+                if (\mod_projetvet\output\substitutions_page::is_available_status($status)) {
+                    $label .= ' ' . \html_writer::span(
+                        get_string('substitution_return_badge', 'mod_projetvet'),
+                        'badge bg-warning text-dark',
+                        ['title' => get_string('substitution_return_badge_help', 'mod_projetvet')]
+                    );
+                }
+                return $label;
+            });
+
         return $columns;
+    }
+
+    /**
+     * Returns the SQL expression counting the open substitutions of the students of the teacher
+     * referenced by the report's main user table, as principal tutor.
+     *
+     * @param string $pvparam Reportbuilder parameter name holding the projetvet instance id
+     * @param string $statusparam Reportbuilder parameter name holding the open substitution status
+     * @return string
+     */
+    public function get_open_substitutions_sql(string $pvparam, string $statusparam): string {
+        $useralias = $this->get_table_alias('user');
+
+        return '(SELECT COUNT(1) FROM {' . substitution::TABLE . '} '
+            . "WHERE primarytutorid = {$useralias}.id AND projetvetid = :{$pvparam} AND status = :{$statusparam})";
     }
 
     /**

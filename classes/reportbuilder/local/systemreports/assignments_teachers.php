@@ -144,6 +144,9 @@ class assignments_teachers extends system_report {
         // A1 acceptance column (with the inconsistency warning badge).
         $this->add_column($entityteacher->get_column('acceptsa1'));
 
+        // Open substitutions column (with the return of the principal tutor badge).
+        $this->add_column($entityteacher->get_column('substitutions'));
+
         // Default sorting by the actual lastname field.
         $this->set_initial_sort_column('user:fullnamewithpicturelink', SORT_ASC);
     }
@@ -193,6 +196,15 @@ class assignments_teachers extends system_report {
             ],
             false,
             new lang_string('assignsecondaryteacher', 'mod_projetvet'),
+        )));
+
+        // Manage the substitute tutors of the tutor's students.
+        $this->add_action((new action(
+            new moodle_url('/mod/projetvet/substitutions.php', ['id' => $cmid, 'tutorid' => ':id']),
+            new pix_icon('i/switchrole', ''),
+            [],
+            false,
+            new lang_string('substitution_manage', 'mod_projetvet'),
         )));
 
         // Update teacher rating action.

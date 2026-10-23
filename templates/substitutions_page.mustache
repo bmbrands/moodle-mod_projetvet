@@ -1,0 +1,105 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_projetvet/substitutions_page
+
+    Substitute tutors management page of a principal tutor.
+
+    Example context (json):
+    {
+        "tutorname": "Irene Ipsen",
+        "statuslabel": "Temporarily unavailable",
+        "statusbadgeclass": "bg-warning text-dark",
+        "backurl": "https://example.com/mod/projetvet/assignments.php?id=1",
+        "returnmessage": "Irene Ipsen is available again: 2 substitution(s) are still open.",
+        "createform": "<form></form>",
+        "manageform": "<form></form>",
+        "hashistory": true,
+        "history": [
+            {
+                "student": "Chris Cross",
+                "substitute": "Henry Höbel",
+                "startdate": "14/10/26",
+                "enddate": "30/10/26",
+                "timeclosed": "",
+                "status": "Open",
+                "statusbadgeclass": "bg-success",
+                "overdue": false,
+                "reason": "Sick leave",
+                "createdby": "Admin User",
+                "closedby": ""
+            }
+        ]
+    }
+}}
+<div class="mb-3">
+    <a href="{{backurl}}">{{#str}}substitution_back, mod_projetvet{{/str}}</a>
+</div>
+
+<p>
+    {{#str}}substitution_tutor_status, mod_projetvet{{/str}}
+    <span class="badge {{statusbadgeclass}}">{{statuslabel}}</span>
+</p>
+
+{{#returnmessage}}
+<div class="alert alert-warning" role="alert">
+    {{returnmessage}}
+</div>
+{{/returnmessage}}
+
+{{{createform}}}
+
+{{{manageform}}}
+
+<h3 class="mt-4">{{#str}}substitution_history_heading, mod_projetvet{{/str}}</h3>
+{{#hashistory}}
+<div class="table-responsive">
+    <table class="table table-sm table-striped generaltable" id="projetvet-substitution-history">
+        <thead>
+            <tr>
+                <th scope="col">{{#str}}substitution_student, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_substitute, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_startdate, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_enddate, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_timeclosed, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}status, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_reason, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_createdby, mod_projetvet{{/str}}</th>
+                <th scope="col">{{#str}}substitution_closedby, mod_projetvet{{/str}}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#history}}
+            <tr>
+                <td>{{student}}</td>
+                <td>{{substitute}}</td>
+                <td>{{startdate}}</td>
+                <td>{{enddate}}{{#overdue}} <span class="badge bg-danger">{{#str}}substitution_overdue_badge, mod_projetvet{{/str}}</span>{{/overdue}}</td>
+                <td>{{timeclosed}}</td>
+                <td><span class="badge {{statusbadgeclass}}">{{status}}</span></td>
+                <td>{{reason}}</td>
+                <td>{{createdby}}</td>
+                <td>{{closedby}}</td>
+            </tr>
+            {{/history}}
+        </tbody>
+    </table>
+</div>
+{{/hashistory}}
+{{^hashistory}}
+<p class="text-muted">{{#str}}substitution_nohistory, mod_projetvet{{/str}}</p>
+{{/hashistory}}

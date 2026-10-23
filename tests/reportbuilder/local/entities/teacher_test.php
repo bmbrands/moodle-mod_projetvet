@@ -20,6 +20,7 @@ use core_reportbuilder\system_report_factory;
 use context_course;
 use mod_projetvet\local\persistent\group_member;
 use mod_projetvet\local\persistent\projetvet_group;
+use mod_projetvet\local\persistent\substitution;
 use mod_projetvet\local\persistent\teacher_rating;
 use mod_projetvet\reportbuilder\local\systemreports\assignments_teachers;
 use mod_projetvet\reportbuilder\local\systemreports\assignments_teachers_selection;
@@ -487,5 +488,70 @@ final class teacher_test extends \advanced_testcase {
         $rendered = $acceptsa1column->format_value([$acceptsa1alias => 1, $a1countalias => 3]);
         $this->assertStringContainsString(get_string('a1accepts_yes', 'mod_projetvet'), $rendered);
         $this->assertStringNotContainsString('badge', $rendered);
+    }
+
+    /**
+     * Test the substitutions column counts the open substitutions of the tutor's students and
+     * flags the return of the principal tutor (available again while substitutions are open).
+     */
+    public function test_substitutions_column(): void {
+        global $DB;
+
+        $data = $this->create_test_data();
+        $pv = $data['projetvet']->id;
+
+        // Teacher 1: two open substitutions and one closed; available again.
+        // Teacher 2: one open substitution, still temporarily unavailable.
+        $records = [
+            [$data['teacher1']->id, $data['students']['student1']->id, substitution::STATUS_OPEN],
+            [$data['teacher1']->id, $data['students']['student2']->id, substitution::STATUS_OPEN],
+            [$data['teacher1']->id, $data['students']['student3']->id, substitution::STATUS_CLOSED],
+            [$data['teacher2']->id, $data['students']['student4']->id, substitution::STATUS_OPEN],
+        ];
+        foreach ($records as [$primaryid, $studentid, $status]) {
+            (new substitution(0, (object) [
+                'projetvetid' => $pv,
+                'studentid' => $studentid,
+                'primarytutorid' => $primaryid,
+                'substitutetutorid' => $data['teacher3']->id,
+                'startdate' => time(),
+                'status' => $status,
+            ]))->create();
+        }
+        $rating = teacher_rating::get_or_create_rating($data['teacher2']->id, $pv);
+        $rating->set('status', teacher_rating::STATUS_TEMPORARILY_UNAVAILABLE);
+        $rating->create();
+
+        $entity = new teacher($pv);
+        $entity->set_table_alias('user', 'rbteacher');
+        $entity->initialise();
+        $column = $entity->get_column('substitutions');
+        $this->assertNotNull($column);
+
+        $fields = $column->get_fields();
+        $teacherids = implode(', ', [$data['teacher1']->id, $data['teacher2']->id, $data['teacher3']->id]);
+        $sql = 'SELECT rbteacher.id, ' . implode(', ', $fields) . " FROM {user} rbteacher WHERE rbteacher.id IN ($teacherids)";
+        $rows = $DB->get_records_sql($sql, $column->get_params());
+
+        preg_match('/AS (\w+)$/', $fields[0], $m0);
+        preg_match('/AS (\w+)$/', $fields[1], $m1);
+        $countalias = $m0[1];
+        $statusalias = $m1[1];
+
+        $this->assertEquals(2, $rows[$data['teacher1']->id]->{$countalias});
+        $this->assertEquals(1, $rows[$data['teacher2']->id]->{$countalias});
+        $this->assertEquals(0, $rows[$data['teacher3']->id]->{$countalias});
+
+        // Teacher 1 is available again: the return badge is shown.
+        $rendered = $column->format_value((array) $rows[$data['teacher1']->id]);
+        $this->assertStringContainsString('2', $rendered);
+        $this->assertStringContainsString(get_string('substitution_return_badge', 'mod_projetvet'), $rendered);
+
+        // Teacher 2 is still unavailable: no badge.
+        $rendered = $column->format_value((array) $rows[$data['teacher2']->id]);
+        $this->assertStringNotContainsString(get_string('substitution_return_badge', 'mod_projetvet'), $rendered);
+
+        // No open substitution: empty cell.
+        $this->assertSame('', $column->format_value((array) $rows[$data['teacher3']->id]));
     }
 }

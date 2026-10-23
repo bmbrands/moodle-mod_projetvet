@@ -120,9 +120,9 @@ class entries {
      * - Users with mod/projetvet:approve can edit approve and submit categories (unless they have unlock)
      * - Users with mod/projetvet:submit can only edit submit categories
      * - Users with mod/projetvet:unlock can only edit unlock categories
-     * - In the archive form sets, users with mod/projetvet:managearchive can edit the categories
-     *   of the current status and the submit categories of the previous status (they act as the
-     *   student, the tutor or the administrator depending on the archive status)
+     * - In the archive form sets, once submitted, users with mod/projetvet:managearchive act as
+     *   tutors: they can edit the categories of the current status and the submit categories of
+     *   the previous status (and reopen a validated archive)
      *
      * @param array $structure The form structure
      * @param int $entrystatus The current entry status
@@ -140,6 +140,7 @@ class entries {
         $hasapprove = has_capability('mod/projetvet:approve', $context);
         $hassubmit = has_capability('mod/projetvet:submit', $context);
         $ismanager = archive::is_archive_formset($formsetidnumber)
+            && $entrystatus >= archive::STATUS_SUBMITTED
             && has_capability('mod/projetvet:managearchive', $context);
 
         foreach ($structure as $category) {

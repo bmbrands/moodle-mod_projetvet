@@ -243,4 +243,51 @@ final class archive_form_test extends \advanced_testcase {
         $this->expectException(moodle_exception::class);
         $this->submit_project($archive, $this->project_formvalues(5));
     }
+
+    /**
+     * Administrators cannot fill in or submit a draft archive on behalf of the student.
+     */
+    public function test_manager_cannot_act_on_draft(): void {
+        $archive = $this->create_archive([$this->project(2, 1)]);
+        $this->setUser($this->manager);
+
+        foreach ([archive::STATUS_DRAFT, archive::STATUS_SUBMITTED] as $buttonstatus) {
+            try {
+                $this->submit_archive($archive, $buttonstatus);
+                $this->fail('Administrators must not save or submit a draft archive');
+            } catch (moodle_exception $e) {
+                $this->assertEquals('archivenoaccess', $e->errorcode);
+            }
+        }
+        try {
+            $this->submit_project($archive, $this->project_formvalues(5));
+            $this->fail('Administrators must not add projects to a draft archive');
+        } catch (moodle_exception $e) {
+            $this->assertEquals('archivenoaccess', $e->errorcode);
+        }
+
+        $archive->read();
+        $this->assertEquals(archive::STATUS_DRAFT, $archive->get('entrystatus'));
+        $this->assertCount(1, archive::get_project_entries($archive));
+    }
+
+    /**
+     * Administrators review a submitted archive like tutors.
+     */
+    public function test_manager_reviews_like_tutor(): void {
+        $archive = $this->create_archive([$this->project(2, 1)], archive::STATUS_SUBMITTED);
+        $projects = archive::get_project_entries($archive);
+        $projectid = reset($projects)->get('id');
+        $this->setUser($this->manager);
+
+        $result = $this->submit_project($archive, $this->project_formvalues(3), $projectid);
+        $this->assertTrue($result['submitted']);
+        $this->assertEquals(3, $this->get_value($projectid, 'archive_ects'));
+
+        $result = $this->submit_archive($archive, archive::STATUS_VALIDATED);
+        $this->assertTrue($result['submitted']);
+        $archive->read();
+        $this->assertEquals(archive::STATUS_VALIDATED, $archive->get('entrystatus'));
+        $this->assertEquals($this->manager->id, $this->get_value($archive->get('id'), 'archive_validation_user'));
+    }
 }

@@ -72,17 +72,41 @@ final class get_archive_entry_test extends \advanced_testcase {
     }
 
     /**
-     * Students cannot open their archive once the function is disabled, administrators still can.
+     * Students cannot open their archive once the function is disabled.
      */
     public function test_disabled_for_students(): void {
         set_config('archive_enabled', 0, 'mod_projetvet');
 
-        $this->setUser($this->manager);
-        $this->assertNotEmpty($this->call($this->student->id)['entryid']);
-
         $this->setUser($this->student);
         $this->expectException(moodle_exception::class);
         $this->call($this->student->id);
+    }
+
+    /**
+     * Administrators cannot start an archive on behalf of a student.
+     */
+    public function test_manager_cannot_create(): void {
+        $this->setUser($this->manager);
+        try {
+            $this->call($this->student->id);
+            $this->fail('Administrators must not create archives');
+        } catch (moodle_exception $e) {
+            $this->assertEquals('archivenoaccess', $e->errorcode);
+        }
+        $this->assertNull(archive::get_archive_entry($this->projetvet->id, $this->student->id));
+    }
+
+    /**
+     * Administrators open a submitted archive, also when disabled for students.
+     */
+    public function test_manager_opens_submitted(): void {
+        $archive = $this->create_archive([$this->project(2, 1)], archive::STATUS_SUBMITTED);
+        set_config('archive_enabled', 0, 'mod_projetvet');
+
+        $this->setUser($this->manager);
+        $result = $this->call($this->student->id);
+        $this->assertEquals($archive->get('id'), $result['entryid']);
+        $this->assertEquals(archive::STATUS_SUBMITTED, $result['entrystatus']);
     }
 
     /**

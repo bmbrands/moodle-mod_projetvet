@@ -74,7 +74,7 @@ class archive {
     }
 
     /**
-     * Whether the user can manage archives (administrators, always available).
+     * Whether the user is an archive administrator (can reopen validated archives).
      *
      * @param context_module $context
      * @param int|null $userid Defaults to the current user
@@ -82,6 +82,19 @@ class archive {
      */
     public static function can_manage(context_module $context, ?int $userid = null): bool {
         return has_capability('mod/projetvet:managearchive', $context, $userid);
+    }
+
+    /**
+     * Whether the user reviews archives: tutors and administrators.
+     *
+     * Reviewers see an archive once the student submitted it, can correct it and validate it.
+     *
+     * @param context_module $context
+     * @param int|null $userid Defaults to the current user
+     * @return bool
+     */
+    public static function is_reviewer(context_module $context, ?int $userid = null): bool {
+        return has_capability('mod/projetvet:approve', $context, $userid) || self::can_manage($context, $userid);
     }
 
     /**
@@ -143,8 +156,8 @@ class archive {
      * Whether a user can open the archive of a student.
      *
      * - the student: see {@see self::student_can_open()};
-     * - administrators: always (even when disabled for students);
-     * - tutors: once the archive has been submitted.
+     * - tutors and administrators: once the archive has been submitted (also when the
+     *   function is disabled for students).
      *
      * @param context_module $context
      * @param int $projetvetid
@@ -161,12 +174,8 @@ class archive {
         if (!projetvet_user_can_view_student($userid, $studentid, $context)) {
             return false;
         }
-        if (self::can_manage($context, $userid)) {
-            return true;
-        }
         $status = self::get_status($projetvetid, $studentid);
-        return $status !== null && $status >= self::STATUS_SUBMITTED
-            && has_capability('mod/projetvet:approve', $context, $userid);
+        return $status !== null && $status >= self::STATUS_SUBMITTED && self::is_reviewer($context, $userid);
     }
 
     /**
@@ -199,9 +208,8 @@ class archive {
      * Whether the user can add, edit or delete the archived projects of an archive.
      *
      * - draft: the student (while the function is enabled for students);
-     * - submitted: tutors, to correct the values entered by the student;
-     * - validated: nobody, the archive is locked (an administrator must reopen it);
-     * - administrators: at any stage before validation.
+     * - submitted: tutors and administrators, to correct the values entered by the student;
+     * - validated: nobody, the archive is locked (an administrator must reopen it).
      *
      * @param form_entry $archive The archive entry
      * @param int|null $userid Defaults to the current user
@@ -219,20 +227,17 @@ class archive {
         if ($status === self::STATUS_VALIDATED || !self::can_open($context, $projetvetid, $studentid, $userid)) {
             return false;
         }
-        if (self::can_manage($context, $userid)) {
-            return true;
-        }
         if ($status === self::STATUS_DRAFT) {
             return self::student_can_open($context, $projetvetid, $studentid, $userid);
         }
-        return has_capability('mod/projetvet:approve', $context, $userid);
+        return self::is_reviewer($context, $userid);
     }
 
     /**
      * Check that the user may move the archive from one status to another.
      *
      * Allowed transitions:
-     * - draft to draft (save) or submitted: the student or an administrator;
+     * - draft to draft (save) or submitted: the student only;
      * - submitted to submitted (save) or validated: a tutor or an administrator;
      * - validated to draft (reopen): an administrator only.
      *
@@ -248,24 +253,19 @@ class archive {
         $userid = $userid ?? $USER->id;
         $context = self::get_context($archive);
         $status = (int) $archive->get('entrystatus');
-        $ismanager = self::can_manage($context, $userid);
 
         switch ($status) {
             case self::STATUS_DRAFT:
                 $allowed = in_array($newstatus, [self::STATUS_DRAFT, self::STATUS_SUBMITTED], true)
-                    && ($ismanager || self::student_can_open(
-                        $context,
-                        $archive->get('projetvetid'),
-                        $archive->get('studentid'),
-                        $userid
-                    ));
+                    && self::student_can_open($context, $archive->get('projetvetid'), $archive->get('studentid'), $userid);
                 break;
             case self::STATUS_SUBMITTED:
                 $allowed = in_array($newstatus, [self::STATUS_SUBMITTED, self::STATUS_VALIDATED], true)
-                    && ($ismanager || has_capability('mod/projetvet:approve', $context, $userid));
+                    && self::is_reviewer($context, $userid);
                 break;
             case self::STATUS_VALIDATED:
-                $allowed = in_array($newstatus, [self::STATUS_VALIDATED, self::STATUS_DRAFT], true) && $ismanager;
+                $allowed = in_array($newstatus, [self::STATUS_VALIDATED, self::STATUS_DRAFT], true)
+                    && self::can_manage($context, $userid);
                 break;
             default:
                 $allowed = false;

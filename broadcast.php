@@ -64,7 +64,7 @@ $PAGE->set_heading(format_string($course->fullname));
 // The students this tutor may message.
 $allowedids = array_map(
     'intval',
-    \mod_projetvet\local\api\groups::get_students_for_tutor($USER->id, $moduleinstance->id)
+    \mod_projetvet\local\api\substitutions::get_students_followed_by_tutor($USER->id, $moduleinstance->id)
 );
 $recipientlimit = \mod_projetvet\local\messaging::MAX_RECIPIENTS;
 

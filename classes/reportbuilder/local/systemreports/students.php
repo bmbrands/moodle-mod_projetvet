@@ -80,7 +80,8 @@ class students extends system_report {
                 $this->add_student_scope_join($studentsjoin);
             }
         } else {
-            $studentids = \mod_projetvet\local\api\groups::get_students_for_tutor($USER->id, $projetvetid);
+            // Their own students and the students they follow as a substitute.
+            $studentids = \mod_projetvet\local\api\substitutions::get_students_followed_by_tutor($USER->id, $projetvetid);
 
             if (empty($studentids)) {
                 // No students for this tutor, add impossible condition.
@@ -180,6 +181,23 @@ class students extends system_report {
 
         // Email.
         $this->add_column($entityuser->get_column('email'));
+
+        // Tutoring: principal tutor and active substitute, relative to the viewing tutor.
+        $tutoringcolumn = (new \core_reportbuilder\local\report\column(
+            'tutoring',
+            new lang_string('substitution_tutoring', 'mod_projetvet'),
+            $entityuser->get_entity_name()
+        ))
+            ->add_joins($entityuser->get_joins())
+            ->add_field("{$entityuseralias}.id", 'userid_tutoring')
+            ->set_type(\core_reportbuilder\local\report\column::TYPE_TEXT)
+            ->set_is_sortable(false)
+            ->add_callback(static function ($value, $row) use ($projetvetid): string {
+                global $USER;
+                return self::get_tutoring_label((int) $row->userid_tutoring, $projetvetid, (int) $USER->id);
+            });
+
+        $this->add_column($tutoringcolumn);
 
         // Total ECTS - create custom column.
         $totalectscolumn = (new \core_reportbuilder\local\report\column(
@@ -286,6 +304,44 @@ class students extends system_report {
         $this->add_column($actionrequiredcolumn);
 
         $this->set_initial_sort_column('user:fullnamewithpicture', SORT_ASC);
+    }
+
+    /**
+     * Describe how a student is tutored, from the point of view of the viewing user.
+     *
+     * - followed as a substitute by the viewer: the principal tutor being replaced;
+     * - the viewer's student temporarily followed by another tutor: the active substitute;
+     * - otherwise the principal tutor (or "Principal tutor" for the viewer's own students).
+     *
+     * @param int $studentid
+     * @param int $projetvetid
+     * @param int $viewerid
+     * @return string HTML
+     */
+    public static function get_tutoring_label(int $studentid, int $projetvetid, int $viewerid): string {
+        $primary = \mod_projetvet\local\api\groups::get_student_primary_tutor($studentid, $projetvetid);
+        $primaryname = $primary ? fullname($primary) : get_string('notutorassigned', 'mod_projetvet');
+        $isprimary = $primary && (int) $primary->id === $viewerid;
+        $substitution = \mod_projetvet\local\api\substitutions::get_open_substitution($studentid, $projetvetid);
+
+        if (!$substitution) {
+            return $isprimary ? get_string('substitution_tutoring_primary', 'mod_projetvet') : s($primaryname);
+        }
+
+        $summary = \mod_projetvet\output\student_info::get_substitution_summary($substitution);
+        if ((int) $substitution->get('substitutetutorid') === $viewerid) {
+            $badge = \html_writer::span(get_string('substitution_tutoring_badge', 'mod_projetvet'), 'badge bg-info text-dark');
+            return $badge . ' ' . s(get_string('substitution_tutoring_replacing', 'mod_projetvet', (object) [
+                'name' => $primaryname,
+                'period' => \mod_projetvet\output\student_info::get_substitution_period($substitution),
+            ]));
+        }
+
+        $label = $isprimary ? get_string('substitution_tutoring_primary', 'mod_projetvet') : $primaryname;
+        return s($label) . \html_writer::div(
+            s(get_string('substitution_tutoring_followedby', 'mod_projetvet', $summary)),
+            'small text-muted'
+        );
     }
 
     /**

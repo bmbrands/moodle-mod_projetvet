@@ -115,6 +115,20 @@ class substitutions {
     }
 
     /**
+     * Get the students a tutor follows: their principal and secondary students (tutor groups)
+     * and the students they follow as an open substitute.
+     *
+     * @param int $tutorid
+     * @param int $projetvetid
+     * @return int[] Student ids
+     */
+    public static function get_students_followed_by_tutor(int $tutorid, int $projetvetid): array {
+        $studentids = array_map('intval', groups::get_students_for_tutor($tutorid, $projetvetid));
+        $substituteids = array_keys(self::get_open_substitutions_for_substitute($tutorid, $projetvetid));
+        return array_values(array_unique(array_merge($studentids, $substituteids)));
+    }
+
+    /**
      * Get the substitution history of the students of a principal tutor (most recent first).
      *
      * @param int $primarytutorid

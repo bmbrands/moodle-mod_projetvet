@@ -67,8 +67,8 @@ class utils {
     /**
      * Check whether a user is a ProjetVet tutor.
      *
-     * A tutor is the primary owner of at least one projetvet group, or a secondary
-     * tutor of at least one projetvet group.
+     * A tutor is the primary owner of at least one projetvet group, a secondary
+     * tutor of at least one projetvet group, or the substitute of an open substitution.
      *
      * @param int $userid The user id to check.
      * @return bool True if the user is a tutor (globally, in any project).
@@ -78,6 +78,16 @@ class utils {
 
         // Primary tutor: owner of at least one group.
         if ($DB->record_exists('projetvet_groups', ['ownerid' => $userid])) {
+            return true;
+        }
+
+        // Substitute tutor of at least one student.
+        if (
+            $DB->record_exists(\mod_projetvet\local\persistent\substitution::TABLE, [
+                'substitutetutorid' => $userid,
+                'status' => \mod_projetvet\local\persistent\substitution::STATUS_OPEN,
+            ])
+        ) {
             return true;
         }
 
@@ -97,8 +107,9 @@ class utils {
     /**
      * Check whether a user is a ProjetVet tutor for a specific project.
      *
-     * A tutor is the primary owner of at least one group in the given project, or a
-     * secondary tutor of at least one group in the given project.
+     * A tutor is the primary owner of at least one group in the given project, a
+     * secondary tutor of at least one group in the given project, or the substitute of an
+     * open substitution in the given project.
      *
      * @param int $userid The user id to check.
      * @param int $projetvetid The projetvet instance id.
@@ -109,6 +120,11 @@ class utils {
 
         // Primary tutor: owner of at least one group in the project.
         if ($DB->record_exists('projetvet_groups', ['ownerid' => $userid, 'projetvetid' => $projetvetid])) {
+            return true;
+        }
+
+        // Substitute tutor of at least one student in the project.
+        if (\mod_projetvet\local\api\substitutions::get_open_substitutions_for_substitute($userid, $projetvetid)) {
             return true;
         }
 

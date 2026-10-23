@@ -19,6 +19,8 @@ namespace mod_projetvet\output;
 use mod_projetvet\local\persistent\form_set;
 use mod_projetvet\local\persistent\form_entry;
 use mod_projetvet\local\api\entries;
+use mod_projetvet\local\api\substitutions;
+use mod_projetvet\local\persistent\substitution;
 use core\url as moodle_url;
 use renderer_base;
 use renderable;
@@ -135,6 +137,16 @@ class student_info implements renderable, templatable {
         $teacherrow['value'] = $tutorname;
 
         $data['infotable']['rows'][] = $teacherrow;
+
+        // Substitute tutor row, while a substitution is open: the principal tutor stays visible above.
+        $substitution = substitutions::get_open_substitution($this->studentid, $this->moduleinstance->id);
+        if ($substitution) {
+            $data['infotable']['rows'][] = [
+                'label' => get_string('substitution_substitute', 'mod_projetvet'),
+                'value' => s(self::get_substitution_summary($substitution)),
+                'rowhighlight' => true,
+            ];
+        }
 
         // Show the tutor's info to the assigned student, the tutor, or a ProjetVet admin.
         $canviewtutorinfo = $tutor && ($this->studentid == $USER->id || $tutor->id == $USER->id ||
@@ -285,6 +297,43 @@ class student_info implements renderable, templatable {
         }
 
         return $data;
+    }
+
+    /**
+     * Describe an open substitution: substitute name and period.
+     *
+     * @param substitution $substitution
+     * @return string
+     */
+    public static function get_substitution_summary(substitution $substitution): string {
+        return get_string('substitution_summary', 'mod_projetvet', (object) [
+            'name' => fullname(\core_user::get_user($substitution->get('substitutetutorid'))),
+            'period' => self::get_substitution_period($substitution),
+        ]);
+    }
+
+    /**
+     * Describe the period of an open substitution: "since <start>" once in effect, "from <start>"
+     * when planned, followed by "until <planned end>" when an end date is planned.
+     *
+     * @param substitution $substitution
+     * @return string
+     */
+    public static function get_substitution_period(substitution $substitution): string {
+        $dateformat = get_string('strftimedatefullshort', 'langconfig');
+        $period = get_string(
+            $substitution->is_in_effect() ? 'substitution_period_since' : 'substitution_period_from',
+            'mod_projetvet',
+            userdate($substitution->get('startdate'), $dateformat)
+        );
+        if ($substitution->get('enddate')) {
+            $period .= ' ' . get_string(
+                'substitution_period_until',
+                'mod_projetvet',
+                userdate($substitution->get('enddate'), $dateformat)
+            );
+        }
+        return $period;
     }
 
     /**

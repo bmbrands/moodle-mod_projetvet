@@ -22,7 +22,7 @@ use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
-use mod_projetvet\local\api\groups;
+use mod_projetvet\local\api\substitutions;
 use mod_projetvet\local\messaging;
 use stdClass;
 
@@ -92,7 +92,7 @@ class send_message extends external_api {
         // Determine the recipients.
         if (empty($params['studentids'])) {
             // No explicit list: address all students of the caller.
-            $recipientids = array_map('intval', groups::get_students_for_tutor($USER->id, $params['projetvetid']));
+            $recipientids = substitutions::get_students_followed_by_tutor($USER->id, $params['projetvetid']);
         } else {
             $recipientids = array_map('intval', $params['studentids']);
             $recipientids = array_values(array_unique($recipientids));
@@ -105,8 +105,8 @@ class send_message extends external_api {
             throw new \moodle_exception('toomanyrecipients', 'mod_projetvet', (object)['count' => count($recipientids)]);
         }
 
-        // Each recipient must be a student assigned to the caller.
-        $allowedids = array_map('intval', groups::get_students_for_tutor($USER->id, $params['projetvetid']));
+        // Each recipient must be a student assigned to the caller, or followed as a substitute.
+        $allowedids = substitutions::get_students_followed_by_tutor($USER->id, $params['projetvetid']);
         $unauthorized = array_diff($recipientids, $allowedids);
         if (!empty($unauthorized)) {
             throw new \moodle_exception('invalidrecipient', 'mod_projetvet');

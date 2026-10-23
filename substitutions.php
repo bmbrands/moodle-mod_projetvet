@@ -26,6 +26,7 @@ use mod_projetvet\form\substitution_create_form;
 use mod_projetvet\form\substitution_manage_form;
 use mod_projetvet\local\api\groups;
 use mod_projetvet\local\api\substitutions;
+use mod_projetvet\local\assignment_notifications;
 
 require(__DIR__ . '/../../config.php');
 require_once(__DIR__ . '/lib.php');
@@ -64,6 +65,15 @@ $PAGE->navbar->add(fullname($tutor));
 if ($action === 'definitive' && confirm_sesskey()) {
     $substitutionids = array_filter(array_map('intval', explode(',', required_param('ids', PARAM_SEQUENCE))));
     $done = substitutions::make_definitive($cm->instance, $substitutionids);
+    if (optional_param('notify', 0, PARAM_BOOL)) {
+        foreach ($done as $substitution) {
+            assignment_notifications::queue_substitution_notifications(
+                $cm->id,
+                $substitution,
+                assignment_notifications::SCENARIO_DEFINITIVE
+            );
+        }
+    }
     redirect(
         $url,
         get_string('substitution_definitive_done', 'mod_projetvet', count($done)),
@@ -101,6 +111,15 @@ if ($data = $createform->get_data()) {
         !empty($data->notifyprimary),
         !empty($data->allowovercapacity)
     );
+    if (!empty($data->sendnotifications)) {
+        foreach ($created as $substitution) {
+            assignment_notifications::queue_substitution_notifications(
+                $cm->id,
+                $substitution,
+                assignment_notifications::SCENARIO_TEMPORARY_START
+            );
+        }
+    }
     redirect(
         $url,
         get_string('substitution_created', 'mod_projetvet', count($created)),
@@ -114,6 +133,15 @@ if ($data = $manageform->get_data()) {
     switch (substitution_manage_form::get_action($data)) {
         case substitution_manage_form::ACTION_CLOSE:
             $closed = substitutions::close_substitutions($cm->instance, $selected);
+            if (!empty($data->sendnotifications)) {
+                foreach ($closed as $substitution) {
+                    assignment_notifications::queue_substitution_notifications(
+                        $cm->id,
+                        $substitution,
+                        assignment_notifications::SCENARIO_TEMPORARY_END
+                    );
+                }
+            }
             redirect(
                 $url,
                 get_string('substitution_closed', 'mod_projetvet', count($closed)),
@@ -145,7 +173,12 @@ if ($data = $manageform->get_data()) {
             echo $OUTPUT->heading(get_string('substitutions_page_title', 'mod_projetvet', fullname($tutor)));
             echo $OUTPUT->confirm(
                 get_string('substitution_definitive_confirm', 'mod_projetvet') . html_writer::alist(array_map('s', $names)),
-                new moodle_url($url, ['action' => 'definitive', 'ids' => implode(',', $selected), 'sesskey' => sesskey()]),
+                new moodle_url($url, [
+                    'action' => 'definitive',
+                    'ids' => implode(',', $selected),
+                    'notify' => empty($data->sendnotifications) ? 0 : 1,
+                    'sesskey' => sesskey(),
+                ]),
                 $url
             );
             echo $OUTPUT->footer();

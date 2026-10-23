@@ -103,6 +103,14 @@ class substitution_manage_form extends moodleform {
         );
         $mform->addHelpButton('newenddate', 'substitution_newenddate', 'mod_projetvet');
 
+        $mform->addElement(
+            'advcheckbox',
+            'sendnotifications',
+            get_string('substitution_sendnotifications', 'mod_projetvet'),
+            get_string('substitution_sendnotifications_end', 'mod_projetvet')
+        );
+        $mform->setDefault('sendnotifications', 1);
+
         $buttons = [
             $mform->createElement('submit', self::ACTION_CLOSE, get_string('substitution_close', 'mod_projetvet')),
             $mform->createElement(

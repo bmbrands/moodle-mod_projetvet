@@ -109,6 +109,14 @@ class substitution_create_form extends moodleform {
             get_string('substitution_allowovercapacity_label', 'mod_projetvet')
         );
 
+        $mform->addElement(
+            'advcheckbox',
+            'sendnotifications',
+            get_string('substitution_sendnotifications', 'mod_projetvet'),
+            get_string('substitution_sendnotifications_start', 'mod_projetvet')
+        );
+        $mform->setDefault('sendnotifications', 1);
+
         $this->add_action_buttons(false, get_string('substitution_create', 'mod_projetvet'));
     }
 

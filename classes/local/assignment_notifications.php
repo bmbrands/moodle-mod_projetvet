@@ -337,4 +337,56 @@ class assignment_notifications {
             }, $roles),
         ];
     }
+
+    /**
+     * Queue the notifications of a substitution change, sent on behalf of the current user.
+     *
+     * - temporary start: the student, the principal tutor and the substitute, dated with the start date;
+     * - temporary end: the student, the principal tutor and the substitute;
+     * - definitive change: the student, the former and the new principal tutor.
+     *
+     * @param int $cmid Course module id.
+     * @param \mod_projetvet\local\persistent\substitution $substitution The substitution.
+     * @param string $scenario SCENARIO_TEMPORARY_START, SCENARIO_TEMPORARY_END or SCENARIO_DEFINITIVE.
+     * @return int Number of queued messages.
+     */
+    public static function queue_substitution_notifications(
+        int $cmid,
+        \mod_projetvet\local\persistent\substitution $substitution,
+        string $scenario
+    ): int {
+        global $USER;
+
+        $primaryid = (int) $substitution->get('primarytutorid');
+        $substituteid = (int) $substitution->get('substitutetutorid');
+        [$afterprimaryid, $beforetemporaryid, $aftertemporaryid, $date] = match ($scenario) {
+            self::SCENARIO_TEMPORARY_START => [$primaryid, 0, $substituteid, (int) $substitution->get('startdate')],
+            self::SCENARIO_TEMPORARY_END => [$primaryid, $substituteid, 0, time()],
+            self::SCENARIO_DEFINITIVE => [$substituteid, 0, 0, time()],
+        };
+
+        $plan = self::build_plan(
+            $cmid,
+            (int) $substitution->get('projetvetid'),
+            (int) $substitution->get('studentid'),
+            $primaryid,
+            $afterprimaryid,
+            $beforetemporaryid,
+            $aftertemporaryid,
+            $date
+        );
+
+        foreach ($plan['messages'] as $message) {
+            messaging::schedule_personal_send(
+                $cmid,
+                (int) $USER->id,
+                (int) $message['userid'],
+                $message['subjectkey'],
+                $message['bodykey'],
+                $message['data'],
+                $message['bodydata']
+            );
+        }
+        return count($plan['messages']);
+    }
 }

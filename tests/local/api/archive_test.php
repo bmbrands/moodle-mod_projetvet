@@ -92,35 +92,37 @@ final class archive_test extends \advanced_testcase {
     }
 
     /**
-     * Tutors only see the archive once submitted, administrators always.
+     * Tutors and administrators only see the archive once submitted, and cannot create it.
      */
     public function test_tutor_and_manager_access(): void {
         $projetvetid = $this->projetvet->id;
         $studentid = $this->student->id;
-        set_config('archive_enabled', 0, 'mod_projetvet');
 
-        $this->assertFalse(archive::can_open($this->context, $projetvetid, $studentid, $this->tutor->id));
-        $this->assertTrue(archive::can_open($this->context, $projetvetid, $studentid, $this->manager->id));
-
-        // The administrator can start the archive of a student even when disabled for students.
-        $this->setUser($this->manager);
-        $archive = archive::get_or_create_archive_entry($this->context, $projetvetid, $studentid, $this->manager->id);
-        $this->assertEquals($studentid, $archive->get('studentid'));
-        $this->assertEquals(archive::STATUS_DRAFT, $archive->get('entrystatus'));
-
-        // The tutor cannot create it.
-        $this->setUser($this->tutor);
-        $other = $this->getDataGenerator()->create_and_enrol(get_course($this->projetvet->course), 'student');
-        try {
-            archive::get_or_create_archive_entry($this->context, $projetvetid, $other->id, $this->tutor->id);
-            $this->fail('Tutors must not create archives');
-        } catch (moodle_exception $e) {
-            $this->assertEquals('archivenoaccess', $e->errorcode);
+        // No archive, or a draft archive: only the student has access.
+        foreach ([$this->tutor, $this->manager] as $user) {
+            $this->assertFalse(archive::can_open($this->context, $projetvetid, $studentid, $user->id));
+            $this->setUser($user);
+            try {
+                archive::get_or_create_archive_entry($this->context, $projetvetid, $studentid, $user->id);
+                $this->fail('Tutors and administrators must not create archives');
+            } catch (moodle_exception $e) {
+                $this->assertEquals('archivenoaccess', $e->errorcode);
+            }
         }
+        $this->assertNull(archive::get_archive_entry($projetvetid, $studentid));
 
-        $archive->set('entrystatus', archive::STATUS_SUBMITTED);
-        $archive->update();
-        $this->assertTrue(archive::can_open($this->context, $projetvetid, $studentid, $this->tutor->id));
+        $archive = $this->create_archive([$this->project(2, 1)]);
+        $this->assertFalse(archive::can_open($this->context, $projetvetid, $studentid, $this->tutor->id));
+        $this->assertFalse(archive::can_open($this->context, $projetvetid, $studentid, $this->manager->id));
+
+        // Submitted and validated archives remain available, also when disabled for students.
+        set_config('archive_enabled', 0, 'mod_projetvet');
+        foreach ([archive::STATUS_SUBMITTED, archive::STATUS_VALIDATED] as $status) {
+            $archive->set('entrystatus', $status);
+            $archive->update();
+            $this->assertTrue(archive::can_open($this->context, $projetvetid, $studentid, $this->tutor->id));
+            $this->assertTrue(archive::can_open($this->context, $projetvetid, $studentid, $this->manager->id));
+        }
     }
 
     /**
@@ -130,7 +132,7 @@ final class archive_test extends \advanced_testcase {
         $archive = $this->create_archive([$this->project(2, 1)]);
         $this->assertTrue(archive::can_edit_projects($archive, $this->student->id));
         $this->assertFalse(archive::can_edit_projects($archive, $this->tutor->id));
-        $this->assertTrue(archive::can_edit_projects($archive, $this->manager->id));
+        $this->assertFalse(archive::can_edit_projects($archive, $this->manager->id));
 
         $archive->set('entrystatus', archive::STATUS_SUBMITTED);
         $archive->update();
@@ -186,7 +188,8 @@ final class archive_test extends \advanced_testcase {
             'Tutor validates' => ['tutor', archive::STATUS_SUBMITTED, archive::STATUS_VALIDATED, true],
             'Tutor cannot return to draft' => ['tutor', archive::STATUS_SUBMITTED, archive::STATUS_DRAFT, false],
             'Tutor cannot reopen' => ['tutor', archive::STATUS_VALIDATED, archive::STATUS_DRAFT, false],
-            'Manager submits' => ['manager', archive::STATUS_DRAFT, archive::STATUS_SUBMITTED, true],
+            'Manager cannot submit for the student' =>
+                ['manager', archive::STATUS_DRAFT, archive::STATUS_SUBMITTED, false],
             'Manager validates' => ['manager', archive::STATUS_SUBMITTED, archive::STATUS_VALIDATED, true],
             'Manager reopens' => ['manager', archive::STATUS_VALIDATED, archive::STATUS_DRAFT, true],
             'Manager cannot skip the tutor' => ['manager', archive::STATUS_DRAFT, archive::STATUS_VALIDATED, false],
@@ -310,10 +313,20 @@ final class archive_test extends \advanced_testcase {
     }
 
     /**
-     * Archive managers can edit the current status categories of the archive forms.
+     * Archive managers review like tutors and can reopen a validated archive.
      */
     public function test_form_permissions(): void {
         $this->setUser($this->manager);
+        $structure = entries::get_form_structure(archive::FORMSET, archive::STATUS_DRAFT, $this->context);
+        $this->assertEmpty(array_filter($structure, fn($category) => $category->canedit));
+
+        $structure = entries::get_form_structure(archive::PROJECT_FORMSET, archive::STATUS_SUBMITTED, $this->context);
+        $editable = array_map(
+            fn($category) => $category->capability,
+            array_filter($structure, fn($category) => $category->canedit)
+        );
+        $this->assertEqualsCanonicalizing(['submit', 'approve'], array_values($editable));
+
         $structure = entries::get_form_structure(archive::FORMSET, archive::STATUS_VALIDATED, $this->context);
         $editable = array_filter($structure, fn($category) => $category->canedit);
         $this->assertCount(1, $editable);

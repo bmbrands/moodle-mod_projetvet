@@ -166,8 +166,6 @@ class view_page implements renderable, templatable {
 
         if ($this->studentid == $USER->id) {
             $label = get_string('archivebutton_student', 'mod_projetvet');
-        } else if (archive::can_manage($this->context)) {
-            $label = get_string('archivebutton_manage', 'mod_projetvet');
         } else if ($status === archive::STATUS_SUBMITTED) {
             $label = get_string('archivebutton_review', 'mod_projetvet');
         } else {

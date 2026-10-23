@@ -43,6 +43,9 @@ class provider implements
     // This plugin stores a sitewide user preference.
     \core_privacy\local\request\user_preference_provider
 {
+    /** @var string[] The user fields of the substitutions table */
+    const SUBSTITUTION_USER_FIELDS = ['studentid', 'primarytutorid', 'substitutetutorid', 'createdby', 'closedby'];
+
     /**
      * Returns metadata about this system.
      *
@@ -80,6 +83,22 @@ class provider implements
             'timemodified' => 'privacy:metadata:projetvet_form_data:timemodified',
             'usermodified' => 'privacy:metadata:projetvet_form_data:usermodified',
         ], 'privacy:metadata:projetvet_form_data');
+
+        // The projetvet_substitutions table stores the temporary substitute tutors of students.
+        $items->add_database_table('projetvet_substitutions', [
+            'projetvetid' => 'privacy:metadata:projetvet_substitutions:projetvetid',
+            'studentid' => 'privacy:metadata:projetvet_substitutions:studentid',
+            'primarytutorid' => 'privacy:metadata:projetvet_substitutions:primarytutorid',
+            'substitutetutorid' => 'privacy:metadata:projetvet_substitutions:substitutetutorid',
+            'startdate' => 'privacy:metadata:projetvet_substitutions:startdate',
+            'enddate' => 'privacy:metadata:projetvet_substitutions:enddate',
+            'reason' => 'privacy:metadata:projetvet_substitutions:reason',
+            'status' => 'privacy:metadata:projetvet_substitutions:status',
+            'timeclosed' => 'privacy:metadata:projetvet_substitutions:timeclosed',
+            'closedby' => 'privacy:metadata:projetvet_substitutions:closedby',
+            'createdby' => 'privacy:metadata:projetvet_substitutions:createdby',
+            'timecreated' => 'privacy:metadata:projetvet_substitutions:timecreated',
+        ], 'privacy:metadata:projetvet_substitutions');
 
         return $items;
     }
@@ -132,6 +151,27 @@ class provider implements
 
         $contextlist->add_from_sql($sql, $params);
 
+        // Find all projetvet activities where the user is involved in a substitution.
+        $sql = "SELECT c.id
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+            INNER JOIN {projetvet_substitutions} s ON s.projetvetid = cm.instance
+                 WHERE s.studentid = :studentid
+                    OR s.primarytutorid = :primarytutorid
+                    OR s.substitutetutorid = :substitutetutorid
+                    OR s.createdby = :createdby
+                    OR s.closedby = :closedby";
+        $contextlist->add_from_sql($sql, [
+            'contextlevel' => CONTEXT_MODULE,
+            'modname' => 'projetvet',
+            'studentid' => $userid,
+            'primarytutorid' => $userid,
+            'substitutetutorid' => $userid,
+            'createdby' => $userid,
+            'closedby' => $userid,
+        ]);
+
         return $contextlist;
     }
 
@@ -171,6 +211,16 @@ class provider implements
                  WHERE cm.id = :instanceid";
 
         $userlist->add_from_sql('usermodified', $sql, $params);
+
+        // Find users involved in substitutions.
+        foreach (self::SUBSTITUTION_USER_FIELDS as $field) {
+            $sql = "SELECT s.{$field}
+                      FROM {course_modules} cm
+                      JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
+                      JOIN {projetvet_substitutions} s ON s.projetvetid = cm.instance
+                     WHERE cm.id = :instanceid";
+            $userlist->add_from_sql($field, $sql, $params);
+        }
     }
 
     /**
@@ -277,6 +327,90 @@ class provider implements
             writer::with_context($context)
                 ->export_data($subcontext, $entrydata);
         }
+
+        static::export_substitutions_for_user($userid, $context, $projetvet);
+    }
+
+    /**
+     * Export the substitutions a user is involved in (as student, tutor, creator or closer).
+     *
+     * @param int $userid The user ID.
+     * @param context $context The context.
+     * @param object $projetvet The projetvet instance.
+     */
+    protected static function export_substitutions_for_user(int $userid, context $context, object $projetvet) {
+        global $DB;
+
+        $select = 'projetvetid = :projetvetid AND (' . implode(' OR ', array_map(
+            fn($field) => "{$field} = :{$field}",
+            self::SUBSTITUTION_USER_FIELDS
+        )) . ')';
+        $params = ['projetvetid' => $projetvet->id] + array_fill_keys(self::SUBSTITUTION_USER_FIELDS, $userid);
+        $records = $DB->get_records_select('projetvet_substitutions', $select, $params, 'timecreated');
+        if (empty($records)) {
+            return;
+        }
+
+        $substitutions = [];
+        foreach ($records as $record) {
+            $substitutions[] = (object) [
+                'student' => transform::user($record->studentid),
+                'primarytutor' => transform::user($record->primarytutorid),
+                'substitutetutor' => transform::user($record->substitutetutorid),
+                'startdate' => transform::date($record->startdate),
+                'enddate' => $record->enddate ? transform::date($record->enddate) : '',
+                'reason' => $record->reason,
+                'status' => \mod_projetvet\local\persistent\substitution::get_status_string_for((int) $record->status),
+                'timeclosed' => $record->timeclosed ? transform::datetime($record->timeclosed) : '',
+                'timecreated' => transform::datetime($record->timecreated),
+            ];
+        }
+
+        writer::with_context($context)->export_data(
+            [get_string('privacy:metadata:projetvet_substitutions', 'mod_projetvet')],
+            (object) ['substitutions' => $substitutions]
+        );
+    }
+
+    /**
+     * Delete the substitutions of users in a projetvet instance.
+     *
+     * The substitutions of the users as student, principal tutor or substitute are deleted; the users
+     * are removed from the substitutions they created or closed.
+     *
+     * @param int $projetvetid The projetvet instance id.
+     * @param int[] $userids The user ids.
+     */
+    protected static function delete_substitutions_for_users(int $projetvetid, array $userids) {
+        global $DB;
+
+        if (empty($userids)) {
+            return;
+        }
+        // A named parameter can only be used once in a query: build one IN clause per field.
+        $conditions = [];
+        $params = ['projetvetid' => $projetvetid];
+        foreach (['studentid', 'primarytutorid', 'substitutetutorid'] as $field) {
+            [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, $field);
+            $conditions[] = "{$field} {$usersql}";
+            $params += $userparams;
+        }
+        $DB->delete_records_select(
+            'projetvet_substitutions',
+            'projetvetid = :projetvetid AND (' . implode(' OR ', $conditions) . ')',
+            $params
+        );
+
+        foreach (['createdby', 'closedby'] as $field) {
+            [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, $field);
+            $DB->set_field_select(
+                'projetvet_substitutions',
+                $field,
+                0,
+                "projetvetid = :projetvetid AND {$field} {$usersql}",
+                ['projetvetid' => $projetvetid] + $userparams
+            );
+        }
     }
 
     /**
@@ -306,6 +440,9 @@ class provider implements
 
         // Delete all entries.
         $DB->delete_records('projetvet_form_entry', ['projetvetid' => $cm->instance]);
+
+        // Delete all substitutions.
+        $DB->delete_records('projetvet_substitutions', ['projetvetid' => $cm->instance]);
     }
 
     /**
@@ -344,6 +481,8 @@ class provider implements
                 // Delete the entry itself.
                 $DB->delete_records('projetvet_form_entry', ['id' => $entry->id]);
             }
+
+            static::delete_substitutions_for_users($cm->instance, [$userid]);
         }
     }
 
@@ -392,5 +531,7 @@ class provider implements
             // Delete the entries.
             $DB->delete_records_select('projetvet_form_entry', "id {$entrysql}", $entryparams);
         }
+
+        static::delete_substitutions_for_users($cm->instance, $userids);
     }
 }

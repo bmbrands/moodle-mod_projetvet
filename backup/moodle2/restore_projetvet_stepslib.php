@@ -56,6 +56,7 @@ class restore_projetvet_activity_structure_step extends restore_activity_structu
             $paths[] = new restore_path_element('teacherrating', '/activity/projetvet/teacherratings/teacherrating');
             $paths[] = new restore_path_element('group', '/activity/projetvet/groups/group');
             $paths[] = new restore_path_element('groupmember', '/activity/projetvet/groups/group/groupmembers/groupmember');
+            $paths[] = new restore_path_element('substitution', '/activity/projetvet/substitutions/substitution');
         }
 
         // Return the paths wrapped into standard activity structure.
@@ -274,6 +275,33 @@ class restore_projetvet_activity_structure_step extends restore_activity_structu
 
         // Insert the group member record.
         $DB->insert_record('projetvet_group_members', $data);
+    }
+
+    /**
+     * Process substitute tutor data
+     *
+     * Substitutions whose student or tutors are not restored are skipped.
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function process_substitution($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->projetvetid = $this->get_new_parentid('projetvet');
+        foreach (['studentid', 'primarytutorid', 'substitutetutorid'] as $field) {
+            $data->{$field} = $this->get_mappingid('user', $data->{$field});
+            if (!$data->{$field}) {
+                return;
+            }
+        }
+        foreach (['closedby', 'createdby', 'usermodified'] as $field) {
+            $data->{$field} = $this->get_mappingid('user', $data->{$field}, 0);
+        }
+
+        // Insert the substitution record.
+        $DB->insert_record('projetvet_substitutions', $data);
     }
 
     /**

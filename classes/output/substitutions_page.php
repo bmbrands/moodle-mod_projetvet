@@ -107,8 +107,8 @@ class substitutions_page implements renderable, templatable {
         foreach (substitutions::get_history_for_primary($this->tutor->id, $projetvetid) as $substitution) {
             $status = (int) $substitution->get('status');
             $rows[] = [
-                'student' => fullname(\core_user::get_user($substitution->get('studentid'))),
-                'substitute' => fullname(\core_user::get_user($substitution->get('substitutetutorid'))),
+                'student' => $this->get_user_name((int) $substitution->get('studentid')),
+                'substitute' => $this->get_user_name((int) $substitution->get('substitutetutorid')),
                 'startdate' => userdate($substitution->get('startdate'), $dateformat),
                 'enddate' => $substitution->get('enddate') ? userdate($substitution->get('enddate'), $dateformat) : '',
                 'timeclosed' => $substitution->get('timeclosed') ? userdate($substitution->get('timeclosed'), $dateformat) : '',

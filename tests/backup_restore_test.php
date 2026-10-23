@@ -175,6 +175,46 @@ final class backup_restore_test extends advanced_testcase {
     }
 
     /**
+     * Test backup and restore of the substitute tutors with user data.
+     */
+    public function test_backup_restore_substitutions(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $projetvet = $generator->create_module('projetvet', ['course' => $course->id]);
+        $primary = $generator->create_and_enrol($course, 'editingteacher');
+        $substitute = $generator->create_and_enrol($course, 'editingteacher');
+        $student = $generator->create_and_enrol($course, 'student');
+        \mod_projetvet\local\api\groups::assign_students_to_teacher($primary->id, [$student->id], $projetvet->id);
+        \mod_projetvet\local\api\substitutions::create_substitutions(
+            $projetvet->cmid,
+            $projetvet->id,
+            [$student->id],
+            $substitute->id,
+            time() - DAYSECS,
+            time() + WEEKSECS,
+            'Sick leave'
+        );
+
+        $backupid = $this->backup_course($course, true);
+        $newcourseid = restore_dbops::create_new_course('Restored substitutions', 'RESTORED_SUBS', $course->category);
+        $this->restore_course($backupid, $newcourseid);
+
+        $newprojetvet = $DB->get_record('projetvet', ['course' => $newcourseid], '*', MUST_EXIST);
+        $restored = $DB->get_records('projetvet_substitutions', ['projetvetid' => $newprojetvet->id]);
+        $this->assertCount(1, $restored);
+        $restored = reset($restored);
+        $this->assertEquals($student->id, $restored->studentid);
+        $this->assertEquals($primary->id, $restored->primarytutorid);
+        $this->assertEquals($substitute->id, $restored->substitutetutorid);
+        $this->assertEquals('Sick leave', $restored->reason);
+        $this->assertEquals(\mod_projetvet\local\persistent\substitution::STATUS_OPEN, $restored->status);
+    }
+
+    /**
      * Backup a course.
      *
      * @param object $course Course to backup

@@ -87,6 +87,12 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
             'groupid', 'userid', 'membertype', 'timecreated', 'timemodified', 'usermodified',
         ]);
 
+        $substitutions = new backup_nested_element('substitutions');
+        $substitution = new backup_nested_element('substitution', ['id'], [
+            'studentid', 'primarytutorid', 'substitutetutorid', 'startdate', 'enddate', 'reason', 'notifyprimary',
+            'status', 'timeclosed', 'closedby', 'createdby', 'timecreated', 'timemodified', 'usermodified',
+        ]);
+
         // Build the tree.
         // Configuration data hierarchy.
         $projetvet->add_child($formsets);
@@ -117,6 +123,9 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
         $group->add_child($groupmembers);
         $groupmembers->add_child($groupmember);
 
+        $projetvet->add_child($substitutions);
+        $substitutions->add_child($substitution);
+
         // Define sources.
         $projetvet->set_source_table('projetvet', ['id' => backup::VAR_ACTIVITYID]);
 
@@ -133,6 +142,7 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
             $teacherrating->set_source_table('projetvet_teacher_rating', ['projetvetid' => backup::VAR_ACTIVITYID]);
             $group->set_source_table('projetvet_groups', ['projetvetid' => backup::VAR_ACTIVITYID]);
             $groupmember->set_source_table('projetvet_group_members', ['groupid' => backup::VAR_PARENTID]);
+            $substitution->set_source_table('projetvet_substitutions', ['projetvetid' => backup::VAR_ACTIVITYID]);
         }
 
         // Define id annotations.
@@ -157,6 +167,12 @@ class backup_projetvet_activity_structure_step extends backup_activity_structure
             $group->annotate_ids('user', 'usermodified');
             $groupmember->annotate_ids('user', 'userid');
             $groupmember->annotate_ids('user', 'usermodified');
+            $substitution->annotate_ids('user', 'studentid');
+            $substitution->annotate_ids('user', 'primarytutorid');
+            $substitution->annotate_ids('user', 'substitutetutorid');
+            $substitution->annotate_ids('user', 'closedby');
+            $substitution->annotate_ids('user', 'createdby');
+            $substitution->annotate_ids('user', 'usermodified');
         }
 
         // Define files.

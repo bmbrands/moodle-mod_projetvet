@@ -186,20 +186,6 @@ class assignments_teachers extends system_report {
             new lang_string('assignstudents', 'mod_projetvet'),
         )));
 
-        // Assign secondary teacher action.
-        $this->add_action((new action(
-            new moodle_url('#', []),
-            new pix_icon('i/users', ''),
-            [
-                'data-action' => 'assign-secondary-teacher',
-                'data-teacherid' => ':id',
-                'data-projetvetid' => $projetvetid,
-                'data-cmid' => $cmid,
-            ],
-            false,
-            new lang_string('assignsecondaryteacher', 'mod_projetvet'),
-        )));
-
         // Manage the substitute tutors of the tutor's students.
         $this->add_action((new action(
             new moodle_url('/mod/projetvet/substitutions.php', ['id' => $cmid, 'tutorid' => ':id']),

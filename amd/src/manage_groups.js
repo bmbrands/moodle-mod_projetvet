@@ -54,27 +54,6 @@ export const init = () => {
         showAssignStudentsModal(cmid, teacherid, projetvetid);
     });
 
-    // Handle assign secondary teacher button clicks in the teachers report.
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-action="assign-secondary-teacher"]');
-        if (!button) {
-            return;
-        }
-
-        event.preventDefault();
-
-        const teacherid = button.dataset.teacherid;
-        const projetvetid = button.dataset.projetvetid;
-        const cmid = button.dataset.cmid;
-
-        if (!teacherid || !projetvetid || !cmid) {
-            return;
-        }
-
-        // Open modal form to assign secondary tutor(s) only.
-        showAssignSecondaryTeacherModal(cmid, teacherid, projetvetid);
-    });
-
     // Handle update teacher rating button clicks in the teachers report.
     document.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="update-teacher-rating"]');
@@ -181,7 +160,6 @@ const showAssignStudentsModal = (cmid, teacherid, projetvetid) => {
             cmid: cmid,
             teacherid: teacherid,
             projetvetid: projetvetid,
-            mode: 'students',
             memberid: 0,
             groupid: 0, // Will be created or loaded on the server side.
         },
@@ -207,50 +185,6 @@ const showAssignStudentsModal = (cmid, teacherid, projetvetid) => {
             });
         }
         // Reload the page to refresh the report.
-        window.location.reload();
-    });
-
-    modalForm.show();
-};
-
-/**
- * Show modal form for assigning secondary teacher(s)
- *
- * @param {number} cmid Course module ID
- * @param {number} teacherid Teacher user ID
- * @param {number} projetvetid Projetvet instance ID
- */
-const showAssignSecondaryTeacherModal = (cmid, teacherid, projetvetid) => {
-    const modalForm = new ModalForm({
-        formClass: '\\mod_projetvet\\form\\edit_member_form',
-        args: {
-            cmid: cmid,
-            teacherid: teacherid,
-            projetvetid: projetvetid,
-            mode: 'secondaryteachers',
-            memberid: 0,
-            groupid: 0,
-        },
-        returnFocus: document.activeElement,
-    });
-
-    modalForm.addEventListener(modalForm.events.LOADED, () => {
-        modalForm.modal.getModal().addClass('modal-dialog-centered');
-        Str.get_string('assignsecondaryteacher', 'mod_projetvet')
-            .then((title) => {
-                modalForm.modal.setTitle(title);
-                return title;
-            })
-            .catch(Notification.exception);
-    });
-
-    modalForm.addEventListener(modalForm.events.FORM_SUBMITTED, (event) => {
-        if (event.detail.message) {
-            Notification.addNotification({
-                message: event.detail.message,
-                type: 'success',
-            });
-        }
         window.location.reload();
     });
 

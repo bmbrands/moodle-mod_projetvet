@@ -64,7 +64,6 @@ class edit_member_form extends dynamic_form {
         $groupid = $data->groupid;
         $teacherid = $data->teacherid;
         $projetvetid = $data->projetvetid;
-        $mode = $data->mode ?? 'all';
 
         // Get or create group.
         if (empty($groupid)) {
@@ -98,7 +97,6 @@ class edit_member_form extends dynamic_form {
 
             $message = get_string('memberupdated', 'mod_projetvet');
         } else {
-            $teacheruserids = !empty($data->teacheruserid) && is_array($data->teacheruserid) ? $data->teacheruserid : [];
             $rawstudentuserids = !empty($data->studentuserid) && is_array($data->studentuserid) ? $data->studentuserid : [];
             $studentuserids = array_map('intval', $rawstudentuserids);
 
@@ -106,45 +104,32 @@ class edit_member_form extends dynamic_form {
             // relative to the group owner (the primary tutor). The whole submission is
             // rejected rather than partially applied, so the manager always gets an
             // explicit answer.
-            if ($mode === 'students' || $mode === 'all') {
-                $ownerid = (int) $group->get('ownerid');
-                $newa1studentids = \mod_projetvet\local\api\groups::get_new_a1_student_ids(
+            $ownerid = (int) $group->get('ownerid');
+            $newa1studentids = \mod_projetvet\local\api\groups::get_new_a1_student_ids(
+                $ownerid,
+                $projetvetid,
+                $studentuserids
+            );
+            if (!empty($newa1studentids)) {
+                // Students already assigned to the tutor are not new assignments, so
+                // only the genuinely new students count towards the capacity check.
+                $existingstudentids = array_map(
+                    'intval',
+                    \mod_projetvet\local\api\groups::get_students_for_tutor($ownerid, $projetvetid)
+                );
+                $newstudentcount = count(array_diff($studentuserids, $existingstudentids));
+
+                $eligibility = \mod_projetvet\local\api\groups::check_a1_assignment_eligibility(
                     $ownerid,
                     $projetvetid,
-                    $studentuserids
+                    $newstudentcount
                 );
-                if (!empty($newa1studentids)) {
-                    // Students already assigned to the tutor are not new assignments, so
-                    // only the genuinely new students count towards the capacity check.
-                    $existingstudentids = array_map(
-                        'intval',
-                        \mod_projetvet\local\api\groups::get_students_for_tutor($ownerid, $projetvetid)
-                    );
-                    $newstudentcount = count(array_diff($studentuserids, $existingstudentids));
-
-                    $eligibility = \mod_projetvet\local\api\groups::check_a1_assignment_eligibility(
-                        $ownerid,
-                        $projetvetid,
-                        $newstudentcount
-                    );
-                    if (!$eligibility['allowed']) {
-                        throw new \moodle_exception('a1assignmentblocked', 'mod_projetvet', '', $eligibility['reason']);
-                    }
+                if (!$eligibility['allowed']) {
+                    throw new \moodle_exception('a1assignmentblocked', 'mod_projetvet', '', $eligibility['reason']);
                 }
             }
 
-            if ($mode === 'students') {
-                $addedcount = \mod_projetvet\local\api\groups::sync_group_students($group->get('id'), $studentuserids);
-            } else if ($mode === 'secondaryteachers') {
-                $addedcount = \mod_projetvet\local\api\groups::sync_group_secondary_tutors($group->get('id'), $teacheruserids);
-            } else {
-                // Backward-compatible behavior for legacy usage.
-                $addedcount = \mod_projetvet\local\api\groups::add_members(
-                    $group->get('id'),
-                    $teacheruserids,
-                    $studentuserids
-                );
-            }
+            $addedcount = \mod_projetvet\local\api\groups::sync_group_students($group->get('id'), $studentuserids);
 
             // Set appropriate message.
             if ($addedcount > 0) {
@@ -190,15 +175,12 @@ class edit_member_form extends dynamic_form {
         $cmid = $this->optional_param('cmid', null, PARAM_INT);
         $teacherid = $this->optional_param('teacherid', 0, PARAM_INT);
         $projetvetid = $this->optional_param('projetvetid', 0, PARAM_INT);
-        $mode = $this->optional_param('mode', 'all', PARAM_ALPHA);
-
         $data = [
             'cmid' => $cmid,
             'memberid' => $memberid,
             'groupid' => $groupid,
             'projetvetid' => $projetvetid,
             'teacherid' => $teacherid,
-            'mode' => $mode,
         ];
 
         // Get or find group.
@@ -226,27 +208,12 @@ class edit_member_form extends dynamic_form {
             $group = new projetvet_group($groupid);
             $members = $group->get_members();
 
-            $teacheruserids = [];
             $studentuserids = [];
 
             foreach ($members as $member) {
-                $membertype = $member->get('membertype');
-                $userid = $member->get('userid');
-
-                // Skip primary tutor (owner).
-                if ($membertype === group_member::TYPE_PRIMARY_TUTOR) {
-                    continue;
+                if ($member->get('membertype') === group_member::TYPE_STUDENT) {
+                    $studentuserids[] = (string) $member->get('userid');
                 }
-
-                if ($membertype === group_member::TYPE_SECONDARY_TUTOR) {
-                    $teacheruserids[] = "$userid";
-                } else if ($membertype === group_member::TYPE_STUDENT) {
-                    $studentuserids[] = "$userid";
-                }
-            }
-
-            if (!empty($teacheruserids)) {
-                $data['teacheruserid'] = $teacheruserids;
             }
 
             if (!empty($studentuserids)) {
@@ -281,7 +248,6 @@ class edit_member_form extends dynamic_form {
         $groupid = $this->optional_param('groupid', 0, PARAM_INT);
         $projetvetid = $this->optional_param('projetvetid', 0, PARAM_INT);
         $teacherid = $this->optional_param('teacherid', 0, PARAM_INT);
-        $mode = $this->optional_param('mode', 'all', PARAM_ALPHA);
 
         // Try to find group if not provided.
         if (empty($groupid) && $teacherid && $projetvetid) {
@@ -308,53 +274,27 @@ class edit_member_form extends dynamic_form {
         $mform->addElement('hidden', 'teacherid', $teacherid);
         $mform->setType('teacherid', PARAM_INT);
 
-        $mform->addElement('hidden', 'mode', $mode);
-        $mform->setType('mode', PARAM_ALPHA);
-
         $modcontext = context_module::instance($cmid);
         $coursecontext = $modcontext->get_course_context();
 
         // User selection (only for new members).
         if (empty($memberid)) {
-            if ($mode === 'all' || $mode === 'secondaryteachers') {
-                // Get available teachers (excluding current teacher).
-                $teacheroptions = \mod_projetvet\local\api\groups::get_available_teachers($cmid, $teacherid);
+            // Get available students (excluding those already in other groups).
+            $studentoptions = \mod_projetvet\local\api\groups::get_available_students($cmid, $projetvetid, $groupid);
 
-                if (!empty($teacheroptions)) {
-                    $groupedteacheroptions = [
-                        [
-                            'name' => get_string('teachers'),
-                            'items' => $teacheroptions,
-                        ],
-                    ];
+            if (!empty($studentoptions)) {
+                $groupedstudentoptions = [
+                    [
+                        'name' => get_string('students'),
+                        'items' => $studentoptions,
+                    ],
+                ];
 
-                    $mform->addElement('tagselect', 'teacheruserid', get_string('selectteacher', 'mod_projetvet'), [], [
-                        'groupedoptions' => $groupedteacheroptions,
-                        'multiple' => true,
-                        'showsuggestions' => true,
-                        'maxtags' => 1,
-                    ]);
-                }
-            }
-
-            if ($mode === 'all' || $mode === 'students') {
-                // Get available students (excluding those already in other groups).
-                $studentoptions = \mod_projetvet\local\api\groups::get_available_students($cmid, $projetvetid, $groupid);
-
-                if (!empty($studentoptions)) {
-                    $groupedstudentoptions = [
-                        [
-                            'name' => get_string('students'),
-                            'items' => $studentoptions,
-                        ],
-                    ];
-
-                    $mform->addElement('tagselect', 'studentuserid', get_string('selectstudent', 'mod_projetvet'), [], [
-                        'groupedoptions' => $groupedstudentoptions,
-                        'multiple' => true,
-                        'showsuggestions' => true,
-                    ]);
-                }
+                $mform->addElement('tagselect', 'studentuserid', get_string('selectstudent', 'mod_projetvet'), [], [
+                    'groupedoptions' => $groupedstudentoptions,
+                    'multiple' => true,
+                    'showsuggestions' => true,
+                ]);
             }
 
             // Hidden field for the actual userid that will be submitted.

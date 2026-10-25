@@ -57,7 +57,7 @@ foreach ($groups as $group) {
 }
 
 // Build header row.
-$headers = ['teacher', 'teacherrating', 'secondaryteacher'];
+$headers = ['teacher', 'teacherrating'];
 for ($i = 1; $i <= $maxstudents; $i++) {
     $headers[] = 'student' . $i;
 }
@@ -75,25 +75,16 @@ foreach ($groups as $group) {
     $rating = teacher_rating::get_user_rating($group->get('ownerid'), $projetvet->id);
     $row[] = $rating ? $rating->get('rating') : teacher_rating::RATING_AVERAGE;
 
-    // Get secondary teacher and students.
-    $members = group_member::get_records(['groupid' => $group->get('id')]);
-    $secondaryteacher = '';
+    // Get students.
+    $members = group_member::get_records(['groupid' => $group->get('id'), 'membertype' => group_member::TYPE_STUDENT]);
     $students = [];
 
     foreach ($members as $member) {
         $user = $DB->get_record('user', ['id' => $member->get('userid')]);
-        if (!$user) {
-            continue;
-        }
-
-        if ($member->get('membertype') === group_member::TYPE_SECONDARY_TUTOR) {
-            $secondaryteacher = $user->username;
-        } else if ($member->get('membertype') === group_member::TYPE_STUDENT) {
+        if ($user) {
             $students[] = $user->username;
         }
     }
-
-    $row[] = $secondaryteacher;
 
     // Add students.
     foreach ($students as $student) {

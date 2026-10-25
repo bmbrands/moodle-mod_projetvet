@@ -67,7 +67,9 @@ class group_importer {
      * Import groups from a CSV file.
      *
      * Expected CSV format:
-     * teacher,teacherrating,secondaryteacher,student1,student2,student3,...
+     * teacher,teacherrating,student1,student2,student3,...
+     *
+     * A "secondaryteacher" column of files made before the substitute tutors is ignored.
      *
      * The file is imported fully or not at all: the whole content is read and validated
      * against the A1 assignment rule before any data is written, and the writes are applied
@@ -100,7 +102,6 @@ class group_importer {
             // Find column indices.
             $teacheridx = array_search('teacher', $columns);
             $ratingidx = array_search('teacherrating', $columns);
-            $secondaryteacheridx = array_search('secondaryteacher', $columns);
 
             // Find student columns (student1, student2, etc.).
             $studentindices = [];
@@ -123,13 +124,13 @@ class group_importer {
             // assignment rule for every new A1 student assignment, against the current
             // database state. If anything fails, abort before writing a single row so the
             // file is imported fully or not at all.
-            $this->validate_rows($rows, $teacheridx, $ratingidx, $secondaryteacheridx, $studentindices);
+            $this->validate_rows($rows, $teacheridx, $ratingidx, $studentindices);
 
             // Write pass, inside a transaction so that any failure rolls back the whole import.
             $transaction = $DB->start_delegated_transaction();
             try {
                 foreach ($rows as $row) {
-                    $this->apply_row($row, $teacheridx, $ratingidx, $secondaryteacheridx, $studentindices);
+                    $this->apply_row($row, $teacheridx, $ratingidx, $studentindices);
                 }
                 $transaction->allow_commit();
             } catch (\exception $e) {
@@ -152,7 +153,6 @@ class group_importer {
      * @param array $rows The CSV data rows.
      * @param int $teacheridx Index of the teacher column.
      * @param int|false $ratingidx Index of the teacherrating column.
-     * @param int|false $secondaryteacheridx Index of the secondaryteacher column.
      * @param int[] $studentindices Indices of the student columns.
      * @throws moodle_exception
      */
@@ -160,7 +160,6 @@ class group_importer {
         array $rows,
         int $teacheridx,
         int|false $ratingidx,
-        int|false $secondaryteacheridx,
         array $studentindices
     ): void {
         global $DB;
@@ -237,14 +236,12 @@ class group_importer {
      * @param array $row The CSV data row.
      * @param int $teacheridx Index of the teacher column.
      * @param int|false $ratingidx Index of the teacherrating column.
-     * @param int|false $secondaryteacheridx Index of the secondaryteacher column.
      * @param int[] $studentindices Indices of the student columns.
      */
     protected function apply_row(
         array $row,
         int $teacheridx,
         int|false $ratingidx,
-        int|false $secondaryteacheridx,
         array $studentindices
     ): void {
         global $DB;
@@ -283,25 +280,6 @@ class group_importer {
                 'projetvetid' => $this->projetvetid,
             ]);
             $group->create();
-        }
-
-        // Get secondary teacher if provided.
-        $secondaryteacherid = null;
-        if ($secondaryteacheridx !== false && !empty($row[$secondaryteacheridx])) {
-            $secondaryusername = trim($row[$secondaryteacheridx]);
-            $secondaryteacher = $DB->get_record('user', ['username' => $secondaryusername], '*', IGNORE_MISSING);
-            if ($secondaryteacher) {
-                $secondaryteacherid = $secondaryteacher->id;
-            }
-        }
-
-        // Add secondary teacher as member if provided.
-        if ($secondaryteacherid) {
-            $this->add_or_update_member(
-                $group->get('id'),
-                $secondaryteacherid,
-                group_member::TYPE_SECONDARY_TUTOR
-            );
         }
 
         // Add students.

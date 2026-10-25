@@ -119,12 +119,11 @@ final class group_importer_test extends \advanced_testcase {
         $this->assertContains((int) $this->student1->id, $studentids);
         $this->assertContains((int) $this->student2->id, $studentids);
 
-        $secondary = group_member::get_records([
+        // The secondaryteacher column of older files is ignored.
+        $this->assertEmpty(group_member::get_records([
             'groupid' => $group->get('id'),
             'userid' => $this->teacher2->id,
-            'membertype' => group_member::TYPE_SECONDARY_TUTOR,
-        ]);
-        $this->assertCount(1, $secondary);
+        ]));
 
         $rating = teacher_rating::get_user_rating($this->teacher1->id, $this->projetvet->id);
         $this->assertNotNull($rating);

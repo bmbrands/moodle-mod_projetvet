@@ -554,4 +554,65 @@ final class teacher_test extends \advanced_testcase {
         // No open substitution: empty cell.
         $this->assertSame('', $column->format_value((array) $rows[$data['teacher3']->id]));
     }
+
+    /**
+     * Test the current and gap columns count the students followed as an open substitute, and
+     * that the available capacity used by the assignment rules matches.
+     */
+    public function test_current_and_gap_include_substitutions(): void {
+        global $DB;
+
+        $data = $this->create_test_data();
+        $pv = $data['projetvet']->id;
+
+        // Teacher 1 owns a group with 2 students and substitutes for 2 more (one closed substitution ignored).
+        \mod_projetvet\local\api\groups::assign_students_to_teacher(
+            $data['teacher1']->id,
+            [$data['students']['student1']->id, $data['students']['student2']->id],
+            $pv
+        );
+        foreach (
+            [
+                [$data['students']['student3']->id, substitution::STATUS_OPEN],
+                [$data['students']['student4']->id, substitution::STATUS_OPEN],
+                [$data['students']['student5']->id, substitution::STATUS_CLOSED],
+            ] as [$studentid, $status]
+        ) {
+            (new substitution(0, (object) [
+                'projetvetid' => $pv,
+                'studentid' => $studentid,
+                'primarytutorid' => $data['teacher2']->id,
+                'substitutetutorid' => $data['teacher1']->id,
+                'startdate' => time(),
+                'status' => $status,
+            ]))->create();
+        }
+
+        $entity = new teacher($pv);
+        $entity->set_table_alias('user', 'rbteacher');
+        $entity->initialise();
+        $current = $entity->get_column('current');
+        $gap = $entity->get_column('gap');
+
+        $fields = array_merge($current->get_fields(), $gap->get_fields());
+        $params = array_merge($current->get_params(), $gap->get_params());
+        $sql = 'SELECT rbteacher.id, ' . implode(', ', $fields) . ' FROM {user} rbteacher WHERE rbteacher.id = :teacherid';
+        $row = $DB->get_record_sql($sql, $params + ['teacherid' => $data['teacher1']->id]);
+
+        preg_match('/AS (\w+)$/', $current->get_fields()[0], $mcurrent);
+        preg_match('/AS (\w+)$/', $current->get_fields()[1], $msubs);
+        preg_match('/AS (\w+)$/', $gap->get_fields()[0], $mgap);
+        $this->assertEquals(4, $row->{$mcurrent[1]});
+        $this->assertEquals(2, $row->{$msubs[1]});
+        $this->assertEquals(teacher_rating::CAPACITY_AVERAGE - 4, $row->{$mgap[1]});
+
+        $rendered = $current->format_value((array) $row);
+        $this->assertStringContainsString(get_string('teacher_current_substitutions', 'mod_projetvet', 2), $rendered);
+
+        // The capacity used by the assignment rules counts the substitutions too.
+        $this->assertEquals(
+            teacher_rating::CAPACITY_AVERAGE - 4,
+            \mod_projetvet\local\api\groups::get_teacher_available_capacity($data['teacher1']->id, $pv)
+        );
+    }
 }

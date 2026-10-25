@@ -165,9 +165,12 @@ class teacher extends base {
             ->add_field($this->get_capacity_sql($targetpvparam), 'target', [$targetpvparam => $this->projetvetid])
             ->set_is_sortable(true);
 
-        // Current student count column.
+        // Current student count column: principal students plus the students followed as an open
+        // substitute. The substitution count is carried as a helper field to show the breakdown.
         $currentpvparam = database::generate_param_name();
         $currentmtparam = database::generate_param_name();
+        $currentsubspvparam = database::generate_param_name();
+        $substitutingpvparam = database::generate_param_name();
         $columns[] = (new column(
             'current',
             new lang_string('teacher_current', 'mod_projetvet'),
@@ -175,14 +178,31 @@ class teacher extends base {
         ))
             ->set_type(column::TYPE_INTEGER)
             ->add_field(
-                $this->get_current_students_sql($currentpvparam, $currentmtparam),
+                $this->get_current_students_sql($currentpvparam, $currentmtparam, $currentsubspvparam),
                 'current',
                 [
                     $currentpvparam => $this->projetvetid,
                     $currentmtparam => group_member::TYPE_STUDENT,
+                    $currentsubspvparam => $this->projetvetid,
                 ]
             )
-            ->set_is_sortable(true);
+            ->add_field(
+                $this->get_substituting_students_sql($substitutingpvparam),
+                'substitutingstudents',
+                [$substitutingpvparam => $this->projetvetid]
+            )
+            ->set_is_sortable(true)
+            ->add_callback(static function (?int $value, $row): string {
+                $label = (string) (int) $value;
+                $substituting = (int) ($row->substitutingstudents ?? 0);
+                if ($substituting > 0) {
+                    $label .= ' ' . \html_writer::span(
+                        get_string('teacher_current_substitutions', 'mod_projetvet', $substituting),
+                        'small text-muted'
+                    );
+                }
+                return $label;
+            });
 
         // Gap column = target capacity - current student count. The capacity part and the
         // current student count part each need their own instance id parameter, because a
@@ -190,6 +210,7 @@ class teacher extends base {
         $capacitypvparam = database::generate_param_name();
         $groupspvparam = database::generate_param_name();
         $mtparam = database::generate_param_name();
+        $gapsubspvparam = database::generate_param_name();
         $columns[] = (new column(
             'gap',
             new lang_string('teacher_gap', 'mod_projetvet'),
@@ -197,12 +218,13 @@ class teacher extends base {
         ))
             ->set_type(column::TYPE_INTEGER)
             ->add_field(
-                $this->get_gap_sql($capacitypvparam, $groupspvparam, $mtparam),
+                $this->get_gap_sql($capacitypvparam, $groupspvparam, $mtparam, $gapsubspvparam),
                 'gap',
                 [
                     $capacitypvparam => $this->projetvetid,
                     $groupspvparam => $this->projetvetid,
                     $mtparam => group_member::TYPE_STUDENT,
+                    $gapsubspvparam => $this->projetvetid,
                 ]
             )
             ->set_is_sortable(true);
@@ -398,22 +420,41 @@ class teacher extends base {
     }
 
     /**
-     * Returns the SQL expression counting the students assigned to the teacher referenced by the
-     * report's main user table in the given projetvet instance.
+     * Returns the SQL expression counting the students followed by the teacher referenced by the
+     * report's main user table in the given projetvet instance: the students of the groups they
+     * own (principal students) plus the students they follow as an open substitute.
      *
      * @param string $pvparam Reportbuilder parameter name holding the projetvet instance id,
      *     see {@see database::generate_param_name()}.
      * @param string $mtparam Reportbuilder parameter name holding the member type,
      *     see {@see database::generate_param_name()}.
+     * @param string $substitutionspvparam Reportbuilder parameter name holding the projetvet instance id
+     *     used by the substitutions part (a named parameter may only occur once in a query).
      * @return string
      */
-    public function get_current_students_sql(string $pvparam, string $mtparam): string {
+    public function get_current_students_sql(string $pvparam, string $mtparam, string $substitutionspvparam): string {
         $useralias = $this->get_table_alias('user');
 
-        return "(SELECT COUNT(1) FROM {" . group_member::TABLE . "} gm "
+        return "((SELECT COUNT(1) FROM {" . group_member::TABLE . "} gm "
             . "JOIN {projetvet_groups} g ON g.id = gm.groupid "
             . "WHERE g.ownerid = {$useralias}.id AND g.projetvetid = :{$pvparam} "
-            . "AND gm.membertype = :{$mtparam})";
+            . "AND gm.membertype = :{$mtparam}) + " . $this->get_substituting_students_sql($substitutionspvparam) . ")";
+    }
+
+    /**
+     * Returns the SQL expression counting the students the teacher referenced by the report's main
+     * user table follows as an open substitute in the given projetvet instance.
+     *
+     * @param string $pvparam Reportbuilder parameter name holding the projetvet instance id,
+     *     see {@see database::generate_param_name()}.
+     * @return string
+     */
+    public function get_substituting_students_sql(string $pvparam): string {
+        $useralias = $this->get_table_alias('user');
+
+        return '(SELECT COUNT(1) FROM {' . substitution::TABLE . '} '
+            . "WHERE substitutetutorid = {$useralias}.id AND projetvetid = :{$pvparam} "
+            . 'AND status = ' . substitution::STATUS_OPEN . ')';
     }
 
     /**
@@ -430,10 +471,18 @@ class teacher extends base {
      *     used by the current student count part, see {@see database::generate_param_name()}.
      * @param string $mtparam Reportbuilder parameter name holding the member type,
      *     see {@see database::generate_param_name()}.
+     * @param string $substitutionspvparam Reportbuilder parameter name holding the projetvet instance id
+     *     used by the substitutions part of the current student count.
      * @return string
      */
-    public function get_gap_sql(string $capacitypvparam, string $groupspvparam, string $mtparam): string {
-        return $this->get_capacity_sql($capacitypvparam) . ' - ' . $this->get_current_students_sql($groupspvparam, $mtparam);
+    public function get_gap_sql(
+        string $capacitypvparam,
+        string $groupspvparam,
+        string $mtparam,
+        string $substitutionspvparam
+    ): string {
+        return $this->get_capacity_sql($capacitypvparam) . ' - '
+            . $this->get_current_students_sql($groupspvparam, $mtparam, $substitutionspvparam);
     }
 
     /**

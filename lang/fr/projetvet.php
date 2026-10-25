@@ -575,6 +575,7 @@ $string['targets_heading'] = 'Paramètres des objectifs';
 $string['targets_heading_desc'] = 'Configurer les valeurs cibles pour les graphiques de progression des étudiants';
 $string['teacher'] = 'Enseignant';
 $string['teacher_current'] = 'Nombre actuel';
+$string['teacher_current_substitutions'] = '(dont {$a} en substitution)';
 $string['teacher_gap'] = 'Écart';
 $string['teacher_intro_value'] = 'Ajoutez ici les informations qui sont spécifiques à cet étudiant. Ces informations seront partagées uniquement entre l\'étudiant et le tuteur.';
 $string['teacher_personal_notes_intro_value'] = 'Vous pouvez ajouter des notes personnelles sur cet entretien. Ces notes ne seront visibles que par vous-même. L\'étudiant ne pourra pas voir ce que vous écrivez ci-dessous.';

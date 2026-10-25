@@ -571,6 +571,7 @@ $string['targets_heading'] = 'Target settings';
 $string['targets_heading_desc'] = 'Configure target values for student progress charts';
 $string['teacher'] = 'Teacher';
 $string['teacher_current'] = 'Current';
+$string['teacher_current_substitutions'] = '(incl. {$a} as substitute)';
 $string['teacher_gap'] = 'Gap';
 $string['teacher_intro_value'] = 'Add here the information that is specific to this student. This information will be shared between the student and the tutor only.';
 $string['teacher_personal_notes_intro_value'] = 'You can add personal notes about this interview. These notes will only be visible to you. The student will not be able to see what you write below.';

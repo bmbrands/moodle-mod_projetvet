@@ -115,7 +115,10 @@ class groups {
     }
 
     /**
-     * Get available capacity for a teacher based on their rating and current primary student load
+     * Get available capacity for a teacher based on their rating and current student load
+     *
+     * The load is the teacher's principal students plus the students they follow as an open
+     * substitute (see {@see substitutions::get_tutor_load()}).
      *
      * @param int $userid The teacher's user ID
      * @param int $projetvetid The projetvet instance ID
@@ -126,10 +129,7 @@ class groups {
         $rating = \mod_projetvet\local\persistent\teacher_rating::get_or_create_rating($userid, $projetvetid);
         $target = $rating->get_capacity();
 
-        // Get current student count (primary groups only).
-        $current = self::get_primary_student_count($userid, $projetvetid);
-
-        return $target - $current;
+        return $target - substitutions::get_tutor_load($userid, $projetvetid);
     }
 
     /**

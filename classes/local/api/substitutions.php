@@ -253,8 +253,7 @@ class substitutions {
      * @return int
      */
     public static function get_available_capacity(int $tutorid, int $projetvetid): int {
-        $rating = teacher_rating::get_or_create_rating($tutorid, $projetvetid);
-        return $rating->get_capacity() - self::get_tutor_load($tutorid, $projetvetid);
+        return groups::get_teacher_available_capacity($tutorid, $projetvetid);
     }
 
     /**

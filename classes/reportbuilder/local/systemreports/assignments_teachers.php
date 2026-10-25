@@ -78,12 +78,14 @@ class assignments_teachers extends system_report {
                 $capacitypvparam = database::generate_param_name();
                 $groupspvparam = database::generate_param_name();
                 $mtparam = database::generate_param_name();
+                $subspvparam = database::generate_param_name();
                 $this->add_base_condition_sql(
-                    '(' . $entityteacher->get_gap_sql($capacitypvparam, $groupspvparam, $mtparam) . ') > 0',
+                    '(' . $entityteacher->get_gap_sql($capacitypvparam, $groupspvparam, $mtparam, $subspvparam) . ') > 0',
                     [
                         $capacitypvparam => $projetvetid,
                         $groupspvparam => $projetvetid,
                         $mtparam => group_member::TYPE_STUDENT,
+                        $subspvparam => $projetvetid,
                     ]
                 );
             }

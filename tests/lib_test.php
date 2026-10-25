@@ -126,12 +126,14 @@ final class lib_test extends \advanced_testcase {
     /**
      * Test the tutor detection helpers (global and project-scoped).
      *
-     * A tutor is the primary owner of a group or a secondary tutor of a group.
+     * A tutor is the primary owner of a group. A leftover secondary tutor membership (replaced
+     * by the substitute tutors) does not make a user a tutor.
      *
      * @covers \mod_projetvet\utils::is_tutor
      * @covers \mod_projetvet\utils::is_tutor_for_project
      */
     public function test_utils_is_tutor(): void {
+        global $DB;
         $this->resetAfterTest();
         $generator = $this->getDataGenerator();
 
@@ -151,22 +153,21 @@ final class lib_test extends \advanced_testcase {
         ]);
         $group->create();
 
-        // Add the secondary tutor to the group.
-        $member = new \mod_projetvet\local\persistent\group_member(0, (object)[
+        // A leftover secondary tutor membership of the group.
+        $DB->insert_record(\mod_projetvet\local\persistent\group_member::TABLE, (object)[
             'groupid' => $group->get('id'),
             'userid' => $secondary->id,
-            'membertype' => \mod_projetvet\local\persistent\group_member::TYPE_SECONDARY_TUTOR,
+            'membertype' => 'secondary_tutor',
         ]);
-        $member->create();
 
-        // Global tutor detection: owner and secondary tutor are tutors, the outsider is not.
+        // Global tutor detection: the owner is a tutor, the secondary tutor and the outsider are not.
         $this->assertTrue(\mod_projetvet\utils::is_tutor($owner->id));
-        $this->assertTrue(\mod_projetvet\utils::is_tutor($secondary->id));
+        $this->assertFalse(\mod_projetvet\utils::is_tutor($secondary->id));
         $this->assertFalse(\mod_projetvet\utils::is_tutor($outsider->id));
 
         // Project-scoped tutor detection.
         $this->assertTrue(\mod_projetvet\utils::is_tutor_for_project($owner->id, $mod1->id));
-        $this->assertTrue(\mod_projetvet\utils::is_tutor_for_project($secondary->id, $mod1->id));
+        $this->assertFalse(\mod_projetvet\utils::is_tutor_for_project($secondary->id, $mod1->id));
         // The tutor has no group in the second project.
         $this->assertFalse(\mod_projetvet\utils::is_tutor_for_project($owner->id, $mod2->id));
         $this->assertFalse(\mod_projetvet\utils::is_tutor_for_project($secondary->id, $mod2->id));

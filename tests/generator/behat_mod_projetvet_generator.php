@@ -133,16 +133,6 @@ class behat_mod_projetvet_generator extends behat_generator_base {
     }
 
     /**
-     * Gets the secondary teacher user id from its username.
-     *
-     * @param string $username
-     * @return int
-     */
-    protected function get_secondaryteacher_id(string $username): int {
-        return $this->get_user_id($username);
-    }
-
-    /**
      * Gets the projetvet group id from its name.
      *
      * @param string $groupname

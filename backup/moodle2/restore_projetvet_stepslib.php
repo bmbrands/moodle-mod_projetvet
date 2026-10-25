@@ -269,6 +269,12 @@ class restore_projetvet_activity_structure_step extends restore_activity_structu
         global $DB;
 
         $data = (object)$data;
+
+        // Secondary tutors (replaced by the substitute tutors) of older backups are not restored.
+        if ($data->membertype === 'secondary_tutor') {
+            return;
+        }
+
         $data->groupid = $this->get_new_parentid('group');
         $data->userid = $this->get_mappingid('user', $data->userid);
         $data->usermodified = $this->get_mappingid('user', $data->usermodified);

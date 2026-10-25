@@ -125,13 +125,4 @@ class projetvet_group extends persistent {
     public function get_student_count(): int {
         return count($this->get_members(group_member::TYPE_STUDENT));
     }
-
-    /**
-     * Get secondary tutors for this group
-     *
-     * @return array Array of group_member objects
-     */
-    public function get_secondary_tutors(): array {
-        return $this->get_members(group_member::TYPE_SECONDARY_TUTOR);
-    }
 }

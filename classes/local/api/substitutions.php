@@ -115,8 +115,8 @@ class substitutions {
     }
 
     /**
-     * Get the students a tutor follows: their principal and secondary students (tutor groups)
-     * and the students they follow as an open substitute.
+     * Get the students a tutor follows: their principal students (tutor groups) and the
+     * students they follow as an open substitute.
      *
      * @param int $tutorid
      * @param int $projetvetid

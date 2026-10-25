@@ -549,65 +549,6 @@ class groups {
     }
 
     /**
-     * Sync secondary tutor memberships for a group.
-     *
-     * Removes current secondary tutor members not in the provided array, and adds missing ones.
-     *
-     * @param int $groupid Group ID
-     * @param array $teacheruserids Secondary tutor user IDs to keep/add
-     * @return int Number of members added
-     */
-    public static function sync_group_secondary_tutors(int $groupid, array $teacheruserids): int {
-        $addedcount = 0;
-        $group = new projetvet_group($groupid);
-        $currentsecondaryteachers = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
-
-        // Remove secondary tutors that are not in the provided array.
-        foreach ($currentsecondaryteachers as $currentmember) {
-            $userid = $currentmember->get('userid');
-            if (!in_array($userid, $teacheruserids)) {
-                $currentmember->delete();
-            }
-        }
-
-        // Add secondary tutors that are missing.
-        foreach ($teacheruserids as $teacheruserid) {
-            $existing = group_member::get_membership($groupid, $teacheruserid);
-            if (!$existing) {
-                $member = new group_member(0, (object)[
-                    'groupid' => $groupid,
-                    'userid' => $teacheruserid,
-                    'membertype' => group_member::TYPE_SECONDARY_TUTOR,
-                ]);
-                $member->create();
-                $addedcount++;
-            }
-        }
-
-        return $addedcount;
-    }
-
-    /**
-     * Add members to a group
-     *
-     * Syncs group membership: removes students not in the provided array and adds new ones.
-     *
-     * @param int $groupid Group ID
-     * @param array $teacheruserids Array of teacher user IDs to add as secondary tutors
-     * @param array $studentuserids Array of student user IDs to add
-     * @return int Number of members added
-     */
-    public static function add_members(
-        int $groupid,
-        array $teacheruserids = [],
-        array $studentuserids = []
-    ): int {
-        $addedstudents = self::sync_group_students($groupid, $studentuserids);
-        $addedteachers = self::sync_group_secondary_tutors($groupid, $teacheruserids);
-        return $addedstudents + $addedteachers;
-    }
-
-    /**
      * Get primary tutor for a student
      *
      * Returns the user object of the primary tutor (group owner) for a student,
@@ -713,7 +654,7 @@ class groups {
      * Get all students for a specific tutor
      *
      * Returns array of student user IDs that are in groups where the specified user
-     * is either a primary tutor (owner) or secondary tutor.
+     * is the primary tutor (owner).
      *
      * @param int $tutorid The tutor's user ID
      * @param int $projetvetid The projetvet instance ID
@@ -727,20 +668,6 @@ class groups {
         $groupids = array_map(function ($group) {
             return $group->get('id');
         }, $ownedgroups);
-
-        // Get all groups where this user is a secondary tutor.
-        $secondarymemberships = self::get_user_memberships(
-            $tutorid,
-            $projetvetid,
-            group_member::TYPE_SECONDARY_TUTOR
-        );
-
-        foreach ($secondarymemberships as $membership) {
-            $groupid = $membership->get('groupid');
-            if (!in_array($groupid, $groupids)) {
-                $groupids[] = $groupid;
-            }
-        }
 
         if (empty($groupids)) {
             return [];

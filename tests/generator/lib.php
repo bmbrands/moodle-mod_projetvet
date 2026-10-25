@@ -299,9 +299,9 @@ class mod_projetvet_generator extends testing_module_generator {
     }
 
     /**
-     * Create a projetvet group with teacher rating and optional secondary teacher
+     * Create a projetvet group with teacher rating
      *
-     * @param array $data Group data with keys: name, teacher, rating, secondaryteacher, projetvetidnumber, course
+     * @param array $data Group data with keys: name, teacher, rating, projetvetidnumber, course
      * @return stdClass The created group record
      */
     public function create_projetvet_group(array $data): stdClass {
@@ -340,16 +340,6 @@ class mod_projetvet_generator extends testing_module_generator {
             \mod_projetvet\local\api\groups::set_teacher_rating($teacher->id, $projetvetid, $data['rating']);
         }
 
-        // Add secondary teacher if provided.
-        if (isset($data['secondaryteacher'])) {
-            $secondaryteacher = $DB->get_record('user', ['username' => $data['secondaryteacher']], '*', MUST_EXIST);
-            \mod_projetvet\local\api\groups::add_members(
-                $group->get('id'),
-                [$secondaryteacher->id],
-                []
-            );
-        }
-
         return $group->to_record();
     }
 
@@ -379,7 +369,7 @@ class mod_projetvet_generator extends testing_module_generator {
             return $existing->to_record();
         }
 
-        // Create member directly without using add_members to avoid sync behavior.
+        // Create member directly without using sync_group_students to avoid sync behavior.
         $member = new \mod_projetvet\local\persistent\group_member(0, (object)[
             'groupid' => $group->id,
             'userid' => $user->id,

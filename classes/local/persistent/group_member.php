@@ -35,9 +35,6 @@ class group_member extends persistent {
     /** Member type: primary tutor (owner of the group) */
     const TYPE_PRIMARY_TUTOR = 'primary_tutor';
 
-    /** Member type: secondary/temporary tutor */
-    const TYPE_SECONDARY_TUTOR = 'secondary_tutor';
-
     /** Member type: student */
     const TYPE_STUDENT = 'student';
 
@@ -76,7 +73,6 @@ class group_member extends persistent {
     protected function validate_membertype($value) {
         $validtypes = [
             self::TYPE_PRIMARY_TUTOR,
-            self::TYPE_SECONDARY_TUTOR,
             self::TYPE_STUDENT,
         ];
 
@@ -107,13 +103,12 @@ class group_member extends persistent {
     }
 
     /**
-     * Check if this is a tutor membership (primary or secondary)
+     * Check if this is a tutor membership
      *
      * @return bool
      */
     public function is_tutor() {
-        $type = $this->get('membertype');
-        return $type === self::TYPE_PRIMARY_TUTOR || $type === self::TYPE_SECONDARY_TUTOR;
+        return $this->get('membertype') === self::TYPE_PRIMARY_TUTOR;
     }
 
     /**
@@ -123,15 +118,6 @@ class group_member extends persistent {
      */
     public function is_primary_tutor() {
         return $this->get('membertype') === self::TYPE_PRIMARY_TUTOR;
-    }
-
-    /**
-     * Check if this is a secondary tutor
-     *
-     * @return bool
-     */
-    public function is_secondary_tutor() {
-        return $this->get('membertype') === self::TYPE_SECONDARY_TUTOR;
     }
 
     /**

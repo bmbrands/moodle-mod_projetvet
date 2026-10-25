@@ -503,33 +503,6 @@ final class groups_test extends \advanced_testcase {
     }
 
     /**
-     * Test get_student_secondary_tutors
-     */
-    public function test_get_student_secondary_tutors(): void {
-        $data = $this->create_test_data();
-        $generator = $this->getDataGenerator();
-
-        // Create secondary tutor.
-        $teacher2 = $generator->create_user(['username' => 'teacher2']);
-        $generator->enrol_user($teacher2->id, $data['course']->id, 'editingteacher');
-
-        // Create group.
-        $group = new projetvet_group(0, (object)[
-            'projetvetid' => $data['projetvet']->id,
-            'ownerid' => $data['teacher']->id,
-            'name' => 'Test Group',
-        ]);
-        $group->create();
-        $group->add_member($data['student1']->id, group_member::TYPE_STUDENT);
-        $group->add_member($teacher2->id, group_member::TYPE_SECONDARY_TUTOR);
-
-        $tutors = groups::get_student_secondary_tutors($data['student1']->id, $data['projetvet']->id);
-
-        $this->assertCount(1, $tutors);
-        $this->assertEquals($teacher2->id, $tutors[0]->id);
-    }
-
-    /**
      * Test assign_students_to_group removes from other groups
      */
     public function test_assign_students_to_group_removes_duplicates(): void {

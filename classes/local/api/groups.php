@@ -635,37 +635,6 @@ class groups {
     }
 
     /**
-     * Get secondary tutors for a student
-     *
-     * Returns array of user objects for all secondary tutors in the student's group.
-     *
-     * @param int $studentid The student's user ID
-     * @param int $projetvetid The projetvet instance ID
-     * @return array Array of user objects
-     */
-    public static function get_student_secondary_tutors(int $studentid, int $projetvetid): array {
-        $memberships = self::get_student_groups($studentid, $projetvetid);
-
-        if (empty($memberships)) {
-            return [];
-        }
-
-        // Get the first group (students should only be in one group per projetvet).
-        $membership = reset($memberships);
-        $group = $membership->get_group();
-
-        // Get all secondary tutors in this group.
-        $members = $group->get_members(group_member::TYPE_SECONDARY_TUTOR);
-
-        $tutors = [];
-        foreach ($members as $member) {
-            $tutors[] = $member->get_user();
-        }
-
-        return $tutors;
-    }
-
-    /**
      * Assign students to a group, ensuring each student belongs to only one group
      *
      * This method removes students from any existing groups in this projetvet instance

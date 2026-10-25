@@ -440,7 +440,6 @@ $string['rating_novice'] = 'Novice';
 $string['satisfactory'] = 'Objectives generally achieved, skills being consolidated';
 $string['save'] = 'Save';
 $string['saveasdraft'] = 'Save as draft';
-$string['secondary_tutor'] = 'Secondary tutor(s)';
 $string['selectedstudents'] = 'Selected students ({$a})';
 $string['selectstudent'] = 'Select student';
 $string['selecttags'] = 'Select';

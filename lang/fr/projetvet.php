@@ -444,7 +444,6 @@ $string['rating_novice'] = 'Novice';
 $string['satisfactory'] = 'Objectifs globalement atteints, compétences en cours de consolidation';
 $string['save'] = 'Enregistrer';
 $string['saveasdraft'] = 'Enregistrer comme brouillon';
-$string['secondary_tutor'] = 'Tuteur(s) secondaire(s)';
 $string['selectedstudents'] = 'Étudiants sélectionnés ({$a})';
 $string['selectstudent'] = 'Sélectionner un étudiant';
 $string['selecttags'] = 'Choisir';

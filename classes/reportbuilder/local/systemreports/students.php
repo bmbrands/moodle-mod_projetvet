@@ -330,7 +330,7 @@ class students extends system_report {
 
         $summary = \mod_projetvet\output\student_info::get_substitution_summary($substitution);
         if ((int) $substitution->get('substitutetutorid') === $viewerid) {
-            $badge = \html_writer::span(get_string('substitution_tutoring_badge', 'mod_projetvet'), 'badge bg-info text-dark');
+            $badge = \html_writer::span(get_string('substitution_tutoring_badge', 'mod_projetvet'), 'badge bg-info');
             return $badge . ' ' . s(get_string('substitution_tutoring_replacing', 'mod_projetvet', (object) [
                 'name' => $primaryname,
                 'period' => \mod_projetvet\output\student_info::get_substitution_period($substitution),

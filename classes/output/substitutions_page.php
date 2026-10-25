@@ -113,7 +113,7 @@ class substitutions_page implements renderable, templatable {
                 'enddate' => $substitution->get('enddate') ? userdate($substitution->get('enddate'), $dateformat) : '',
                 'timeclosed' => $substitution->get('timeclosed') ? userdate($substitution->get('timeclosed'), $dateformat) : '',
                 'status' => substitution::get_status_string_for($status),
-                'statusbadgeclass' => $status === substitution::STATUS_OPEN ? 'bg-success' : 'bg-secondary',
+                'statusbadgeclass' => self::get_status_badge_class($status),
                 'overdue' => $substitution->is_overdue(),
                 'reason' => $substitution->get('reason'),
                 'createdby' => $this->get_user_name((int) $substitution->get('createdby')),
@@ -121,6 +121,20 @@ class substitutions_page implements renderable, templatable {
             ];
         }
         return $rows;
+    }
+
+    /**
+     * Get the Bootstrap badge class of a substitution status (light text on a dark background).
+     *
+     * @param int $status
+     * @return string
+     */
+    public static function get_status_badge_class(int $status): string {
+        return [
+            substitution::STATUS_OPEN => 'bg-success',
+            substitution::STATUS_CLOSED => 'bg-dark',
+            substitution::STATUS_DEFINITIVE => 'bg-info',
+        ][$status] ?? 'bg-dark';
     }
 
     /**

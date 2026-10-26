@@ -379,4 +379,116 @@ class mod_projetvet_generator extends testing_module_generator {
 
         return $member->to_record();
     }
+
+    /**
+     * Get a projetvet instance id from the idnumber of its course module.
+     *
+     * @param string $idnumber
+     * @return int
+     */
+    protected function get_projetvetid_by_idnumber(string $idnumber): int {
+        global $DB;
+
+        return (int) $DB->get_field_sql(
+            "SELECT cm.instance
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module
+              WHERE cm.idnumber = :idnumber AND m.name = 'projetvet'",
+            ['idnumber' => $idnumber],
+            MUST_EXIST
+        );
+    }
+
+    /**
+     * Set the tutor settings (rating, availability status, A1 acceptance) of a teacher.
+     *
+     * @param array $data Keys: user (username), projetvetidnumber, and optionally rating
+     *     (expert, average, novice), status (open, closed, unavailable, inactive) and acceptsa1 (yes, no)
+     * @return stdClass The teacher rating record
+     */
+    public function create_tutor_settings(array $data): stdClass {
+        global $DB;
+
+        if (!isset($data['user']) || !isset($data['projetvetidnumber'])) {
+            throw new coding_exception('user and projetvetidnumber are required for tutor_settings');
+        }
+        $user = $DB->get_record('user', ['username' => $data['user']], '*', MUST_EXIST);
+        $projetvetid = $this->get_projetvetid_by_idnumber($data['projetvetidnumber']);
+
+        if (!empty($data['rating'])) {
+            \mod_projetvet\local\api\groups::set_teacher_rating($user->id, $projetvetid, $data['rating']);
+        }
+        if (!empty($data['status'])) {
+            $statuses = [
+                'open' => \mod_projetvet\local\persistent\teacher_rating::STATUS_ACTIVE_OPEN,
+                'closed' => \mod_projetvet\local\persistent\teacher_rating::STATUS_ACTIVE_CLOSED,
+                'unavailable' => \mod_projetvet\local\persistent\teacher_rating::STATUS_TEMPORARILY_UNAVAILABLE,
+                'inactive' => \mod_projetvet\local\persistent\teacher_rating::STATUS_INACTIVE,
+            ];
+            if (!isset($statuses[$data['status']])) {
+                throw new coding_exception('Unknown tutor status: ' . $data['status']);
+            }
+            \mod_projetvet\local\api\groups::set_teacher_status($user->id, $projetvetid, $statuses[$data['status']]);
+        }
+        if (!empty($data['acceptsa1'])) {
+            \mod_projetvet\local\api\groups::set_teacher_a1_acceptance(
+                $user->id,
+                $projetvetid,
+                $data['acceptsa1'] === 'no'
+                    ? \mod_projetvet\local\persistent\teacher_rating::ACCEPTS_A1_NO
+                    : \mod_projetvet\local\persistent\teacher_rating::ACCEPTS_A1_YES
+            );
+        }
+
+        return \mod_projetvet\local\persistent\teacher_rating::get_or_create_rating($user->id, $projetvetid)->to_record();
+    }
+
+    /**
+     * Create a substitution, without checking the control rules.
+     *
+     * The principal tutor is the student's current principal tutor.
+     *
+     * @param array $data Keys: student, substitute (usernames), projetvetidnumber, and optionally
+     *     startdate, enddate (timestamps), reason, notifyprimary (0/1) and status (open, closed, definitive)
+     * @return stdClass The substitution record
+     */
+    public function create_substitution(array $data): stdClass {
+        global $DB, $USER;
+
+        foreach (['student', 'substitute', 'projetvetidnumber'] as $required) {
+            if (!isset($data[$required])) {
+                throw new coding_exception('student, substitute and projetvetidnumber are required for substitution');
+            }
+        }
+        $student = $DB->get_record('user', ['username' => $data['student']], '*', MUST_EXIST);
+        $substitute = $DB->get_record('user', ['username' => $data['substitute']], '*', MUST_EXIST);
+        $projetvetid = $this->get_projetvetid_by_idnumber($data['projetvetidnumber']);
+        $primary = \mod_projetvet\local\api\groups::get_student_primary_tutor($student->id, $projetvetid);
+        if (!$primary) {
+            throw new coding_exception('The student has no principal tutor: ' . $data['student']);
+        }
+
+        $statuses = [
+            'open' => \mod_projetvet\local\persistent\substitution::STATUS_OPEN,
+            'closed' => \mod_projetvet\local\persistent\substitution::STATUS_CLOSED,
+            'definitive' => \mod_projetvet\local\persistent\substitution::STATUS_DEFINITIVE,
+        ];
+        $status = $statuses[$data['status'] ?? 'open'];
+
+        $substitution = new \mod_projetvet\local\persistent\substitution(0, (object) [
+            'projetvetid' => $projetvetid,
+            'studentid' => $student->id,
+            'primarytutorid' => $primary->id,
+            'substitutetutorid' => $substitute->id,
+            'startdate' => (int) ($data['startdate'] ?? time()),
+            'enddate' => (int) ($data['enddate'] ?? 0),
+            'reason' => $data['reason'] ?? '',
+            'notifyprimary' => !empty($data['notifyprimary']),
+            'status' => $status,
+            'timeclosed' => $status === \mod_projetvet\local\persistent\substitution::STATUS_OPEN ? 0 : time(),
+            'closedby' => $status === \mod_projetvet\local\persistent\substitution::STATUS_OPEN ? 0 : (int) $USER->id,
+            'createdby' => (int) $USER->id,
+        ]);
+        return $substitution->create()->to_record();
+    }
 }

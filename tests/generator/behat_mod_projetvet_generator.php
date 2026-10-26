@@ -53,6 +53,18 @@ class behat_mod_projetvet_generator extends behat_generator_base {
                 'required' => ['user', 'group'],
                 'switchids' => [],
             ],
+            'tutor settings' => [
+                'singular' => 'tutor setting',
+                'datagenerator' => 'tutor_settings',
+                'required' => ['user', 'projetvetidnumber'],
+                'switchids' => [],
+            ],
+            'substitutions' => [
+                'singular' => 'substitution',
+                'datagenerator' => 'substitution',
+                'required' => ['student', 'substitute', 'projetvetidnumber'],
+                'switchids' => [],
+            ],
         ];
     }
 

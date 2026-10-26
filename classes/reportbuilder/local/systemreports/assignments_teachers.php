@@ -190,7 +190,7 @@ class assignments_teachers extends system_report {
         $this->add_action((new action(
             new moodle_url('/mod/projetvet/substitutions.php', ['id' => $cmid, 'tutorid' => ':id']),
             new pix_icon('i/switchrole', ''),
-            [],
+            ['data-action' => 'manage-substitutions'],
             false,
             new lang_string('substitution_manage', 'mod_projetvet'),
         )));

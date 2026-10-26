@@ -585,6 +585,7 @@ class behat_mod_projetvet extends behat_base {
      * | View              | Activity name | The activity view page        |
      * | Tutor assignments | Activity name | The assignments page (assignments.php)    |
      * | Dashboard         | Activity name | The dashboard page (dashboard.php)        |
+     * | Substitutions     | Activity name > tutor username | The substitute tutors page of a principal tutor |
      *
      * @param string $type identifies which type of page this is, e.g. 'Tutor assignments'.
      * @param string $identifier identifies the particular page, e.g. 'ProjetVet 1'.
@@ -610,6 +611,13 @@ class behat_mod_projetvet extends behat_base {
                     '/mod/projetvet/dashboard.php',
                     ['id' => $this->get_cm_by_projetvet_name($identifier)->id]
                 );
+
+            case 'substitutions':
+                [$activityname, $username] = array_map('trim', explode('>', $identifier, 2));
+                return new moodle_url('/mod/projetvet/substitutions.php', [
+                    'id' => $this->get_cm_by_projetvet_name($activityname)->id,
+                    'tutorid' => $this->get_user_by_identifier($username)->id,
+                ]);
 
             default:
                 throw new Exception('Unrecognised projetvet page type "' . $type . '."');
@@ -755,5 +763,45 @@ class behat_mod_projetvet extends behat_base {
             );
         }
         return (string) $field->getAttribute('class');
+    }
+
+    /**
+     * Checks the text of a table row, inside a region (e.g. a report of the assignments page).
+     *
+     * The row is the first table row of the region containing the row text.
+     * // phpcs:disable moodle.Files.LineLength.TooLong
+     * @Then /^I should (not )?see "([^"]*)" in the "([^"]*)" row of the "([^"]*)" "([^"]*)"$/
+     * // phpcs:enable moodle.Files.LineLength.TooLong
+     * @param string $not "not " to check the text is absent, '' otherwise
+     * @param string $text The text to look for
+     * @param string $rowtext A text identifying the row
+     * @param string $region The region locator
+     * @param string $selectortype The region selector type
+     * @throws ExpectationException
+     */
+    public function i_should_see_in_the_row_of_region($not, $text, $rowtext, $region, $selectortype) {
+        $container = $this->get_selected_node($selectortype, $region);
+        $row = null;
+        foreach ($container->findAll('css', 'tr') as $candidate) {
+            if (strpos($candidate->getText(), $rowtext) !== false) {
+                $row = $candidate;
+                break;
+            }
+        }
+        if (!$row) {
+            throw new ExpectationException(
+                'No row containing "' . $rowtext . '" was found in "' . $region . '"',
+                $this->getSession()
+            );
+        }
+
+        $found = strpos($row->getText(), $text) !== false;
+        if ($found === ($not !== '')) {
+            throw new ExpectationException(
+                'The "' . $rowtext . '" row ' . ($not !== '' ? 'contains' : 'does not contain') . ' "' . $text . '". Found: '
+                    . $row->getText(),
+                $this->getSession()
+            );
+        }
     }
 }

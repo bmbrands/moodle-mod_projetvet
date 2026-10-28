@@ -48,25 +48,14 @@ class delete_entry extends external_api {
         if (!$entry) {
             throw new \moodle_exception('entry_not_found', 'mod_projetvet', '', $params['entryid']);
         }
-        $status = $entry->get('entrystatus');
-        // Only allow deletion of entries with entrystatus 0 (draft).
-        if ($status > 1) {
-            throw new \moodle_exception('cannotdeleteactivity', 'mod_projetvet');
-        }
-
         // Get context from the projetvet instance.
         global $DB;
         $cm = get_coursemodule_from_instance('projetvet', $entry->get('projetvetid'));
         $context = \context_module::instance($cm->id);
         self::validate_context($context);
 
-        // Check if user can delete this entry.
-        if (!$entry->can_delete()) {
-            throw new \moodle_exception('cannotdeleteactivity', 'mod_projetvet');
-        }
-
-        // Delete the entry (this will trigger after_delete hook).
-        return $entry->delete();
+        // Delete the entry, with its data, files and subset entries, if the user can delete it.
+        return \mod_projetvet\local\api\entries::delete_entry($entry->get('id'));
     }
 
     /**

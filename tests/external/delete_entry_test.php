@@ -152,17 +152,9 @@ final class delete_entry_test extends advanced_testcase {
         // Set as teacher.
         $this->setUser($teacher);
 
-        // Teachers should be able to delete if they have the capability.
-        // Note: This test assumes teacher has necessary capabilities.
-        // If it fails due to permissions, that's expected behavior.
-        try {
-            $result = delete_entry::execute($entryid);
-            // If we get here, teacher can delete.
-            $this->assertTrue($result);
-        } catch (\moodle_exception $e) {
-            // If exception is about permissions, that's valid.
-            $this->assertStringContainsString('cannotdeleteactivity', $e->errorcode);
-        }
+        // Teachers can delete the projects of the students they can view, at any status.
+        $this->assertTrue(delete_entry::execute($entryid));
+        $this->assertFalse(form_entry::get_record(['id' => $entryid]));
     }
 
     /**

@@ -455,25 +455,50 @@ class entries {
      * @return bool
      */
     public static function delete_entry(int $entryid): bool {
-        $entry = new form_entry($entryid);
+        global $DB;
+
+        $entry = form_entry::get_record(['id' => $entryid]);
         if (empty($entry)) {
             throw new moodle_exception('entry_not_found', 'projetvet', '', $entryid);
         }
         if (!$entry->can_delete()) {
             throw new moodle_exception('cannotdeleteactivity', 'projetvet');
         }
+
+        $transaction = $DB->start_delegated_transaction();
         try {
-            // Delete all associated data first.
-            $datarecords = form_data::get_records(['entryid' => $entryid]);
-            foreach ($datarecords as $data) {
-                $data->delete();
-            }
-            // Then delete the entry.
-            $entry->delete();
+            self::delete_entry_and_children($entry);
         } catch (invalid_persistent_exception $e) {
-            throw new moodle_exception('cannotdeleteactivity', 'projetvet', '', $e->getMessage());
+            $transaction->rollback(new moodle_exception('cannotdeleteactivity', 'projetvet', '', $e->getMessage()));
         }
+        $transaction->allow_commit();
         return true;
+    }
+
+    /**
+     * Delete an entry with its data, its uploaded files and its subset entries (e.g. the case
+     * notebook of a project), without permission checks.
+     *
+     * @param form_entry $entry
+     * @return void
+     */
+    protected static function delete_entry_and_children(form_entry $entry): void {
+        foreach (form_entry::get_records(['parententryid' => $entry->get('id')]) as $child) {
+            self::delete_entry_and_children($child);
+        }
+
+        $cm = get_coursemodule_from_instance('projetvet', $entry->get('projetvetid'), 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        $fs = get_file_storage();
+        foreach (form_data::get_records(['entryid' => $entry->get('id')]) as $data) {
+            $field = form_field::get_record(['id' => $data->get('fieldid')]);
+            if ($field && $field->get('type') === 'filemanager' && $data->get_value()) {
+                $fs->delete_area_files($context->id, 'mod_projetvet', 'entry_files', (int) $data->get_value());
+            }
+            $data->delete();
+        }
+
+        $entry->delete();
     }
 
     /**

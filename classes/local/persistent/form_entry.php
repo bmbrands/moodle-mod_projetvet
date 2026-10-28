@@ -31,6 +31,9 @@ class form_entry extends persistent {
      */
     const TABLE = 'projetvet_form_entry';
 
+    /** The highest entry status at which a student can delete their own entry (0 draft, 1 submitted). */
+    const STUDENT_DELETE_MAX_STATUS = 1;
+
     /**
      * Return the custom definition of the properties of this model.
      *
@@ -106,22 +109,31 @@ class form_entry extends persistent {
     }
 
     /**
-     * Check if the current user can delete this entry
+     * Check if a user can delete this entry
      *
+     * - the student can delete their own entries while they are a draft or submitted
+     *   (status up to {@see self::STUDENT_DELETE_MAX_STATUS});
+     * - teachers (mod/projetvet:approve) and administrators (mod/projetvet:admin) who can view
+     *   the student can delete their entries at any status.
+     *
+     * @param int|null $userid Defaults to the current user
      * @return bool
      */
-    public function can_delete(): bool {
-        global $USER;
-        // Students can delete their own entries.
-        if ($this->get('studentid') == $USER->id) {
+    public function can_delete(?int $userid = null): bool {
+        global $CFG, $USER;
+        require_once($CFG->dirroot . '/mod/projetvet/lib.php');
+
+        $userid = $userid ?? (int) $USER->id;
+        $context = $this->get_context();
+        $studentid = (int) $this->get('studentid');
+
+        $isteacher = has_capability('mod/projetvet:approve', $context, $userid)
+            || has_capability('mod/projetvet:admin', $context, $userid);
+        if ($isteacher && projetvet_user_can_view_student($userid, $studentid, $context)) {
             return true;
         }
-        // Teachers can delete any entry.
-        $context = \context_module::instance($this->get_context()->instanceid);
-        if (has_capability('mod/projetvet:edit', $context)) {
-            return true;
-        }
-        return false;
+
+        return $studentid === $userid && (int) $this->get('entrystatus') <= self::STUDENT_DELETE_MAX_STATUS;
     }
 
     /**

@@ -55,10 +55,14 @@ Feature: Delete a project from the projects list
     When I reload the page
     Then I should see "Stage rural"
 
-  Scenario: The student cannot delete a project once it is accepted
-    When I am on the "ProjetVet 1" "projetvet activity" page logged in as student1
-    And I click on "Actions" "button" in the "Projet validé" "table_row"
-    Then "Delete" "link" should not exist in the "Projet validé" "table_row"
+  Scenario: The student deletes a validated project after the confirmation
+    Given I am on the "ProjetVet 1" "projetvet activity" page logged in as student1
+    When I click on "Actions" "button" in the "Projet validé" "table_row"
+    And I click on "Delete" "link" in the "Projet validé" "table_row"
+    Then I should see "The project “Projet validé” will be permanently deleted." in the "Delete this project?" "dialogue"
+    When I click on "Delete" "button" in the "Delete this project?" "dialogue"
+    Then I should not see "Projet validé"
+    And I should see "Stage rural"
 
   Scenario Outline: Teachers and administrators delete any project of a student
     Given I log in as "<user>"

@@ -95,13 +95,15 @@ final class entries_delete_action_test extends \advanced_testcase {
     }
 
     /**
-     * The student only gets the delete action on their projects up to submitted.
+     * The student gets the delete action on all their projects.
      */
     public function test_student(): void {
         $this->setUser($this->student);
         $html = $this->render_report();
 
-        $this->assertEquals([$this->projects[1]], $this->get_deletable_ids($html));
+        $ids = $this->get_deletable_ids($html);
+        sort($ids);
+        $this->assertEquals(array_values($this->projects), $ids);
         // The title is passed (escaped) for the confirmation.
         $this->assertStringContainsString('data-entrytitle="Club &quot;Comédie&quot; &amp; co"', $html);
     }

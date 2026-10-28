@@ -91,9 +91,9 @@ final class entries_delete_test extends \advanced_testcase {
         return [
             'Student, draft' => ['student', 0, true],
             'Student, submitted' => ['student', 1, true],
-            'Student, accepted' => ['student', 2, false],
-            'Student, report submitted' => ['student', 3, false],
-            'Student, validated' => ['student', 4, false],
+            'Student, accepted' => ['student', 2, true],
+            'Student, report submitted' => ['student', 3, true],
+            'Student, validated' => ['student', 4, true],
             'Other student, draft' => ['otherstudent', 0, false],
             'Editing teacher, draft' => ['editingteacher', 0, true],
             'Editing teacher, validated' => ['editingteacher', 4, true],
@@ -104,7 +104,7 @@ final class entries_delete_test extends \advanced_testcase {
     }
 
     /**
-     * The student deletes their drafts and submitted projects, teachers and administrators any project.
+     * The student, their teachers and administrators delete a project at any status.
      *
      * @param string $user The user name in the scenario
      * @param int $status The project status
@@ -117,6 +117,17 @@ final class entries_delete_test extends \advanced_testcase {
 
         $this->setUser($this->users[$user]);
         $this->assertSame($expected, $project->can_delete());
+    }
+
+    /**
+     * The student deletes their other entries (face-to-face sessions) only while draft or submitted.
+     */
+    public function test_can_delete_other_entries(): void {
+        $student = $this->users['student'];
+        foreach ([0 => true, 1 => true, 2 => false] as $status => $expected) {
+            $entry = new form_entry(entries::create_entry($this->projetvet->id, $student->id, [], $status, 'facetoface'));
+            $this->assertSame($expected, $entry->can_delete($student->id), "Status $status");
+        }
     }
 
     /**
@@ -171,24 +182,27 @@ final class entries_delete_test extends \advanced_testcase {
     }
 
     /**
-     * A student cannot delete a project once accepted, a teacher can, through the web service.
+     * Through the web service, another student cannot delete a validated project, the student and a teacher can.
      */
     public function test_delete_entry_web_service(): void {
         global $DB;
 
         $project = $this->create_project(4);
 
-        $this->setUser($this->users['student']);
+        $this->setUser($this->users['otherstudent']);
         try {
             delete_entry::execute($project->get('id'));
-            $this->fail('The student must not delete a validated project');
+            $this->fail('Another student must not delete the project');
         } catch (moodle_exception $e) {
             $this->assertEquals('cannotdeleteactivity', $e->errorcode);
         }
         $this->assertTrue($DB->record_exists(form_entry::TABLE, ['id' => $project->get('id')]));
 
-        $this->setUser($this->users['teacher']);
-        $this->assertTrue(delete_entry::execute($project->get('id')));
-        $this->assertFalse($DB->record_exists(form_entry::TABLE, ['id' => $project->get('id')]));
+        foreach (['student', 'teacher'] as $user) {
+            $project = $this->create_project(4);
+            $this->setUser($this->users[$user]);
+            $this->assertTrue(delete_entry::execute($project->get('id')), $user);
+            $this->assertFalse($DB->record_exists(form_entry::TABLE, ['id' => $project->get('id')]), $user);
+        }
     }
 }

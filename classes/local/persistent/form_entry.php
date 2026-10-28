@@ -34,6 +34,9 @@ class form_entry extends persistent {
     /** The highest entry status at which a student can delete their own entry (0 draft, 1 submitted). */
     const STUDENT_DELETE_MAX_STATUS = 1;
 
+    /** The idnumber of the form set of projects, which students can delete at any status. */
+    const PROJECT_FORMSET = 'activities';
+
     /**
      * Return the custom definition of the properties of this model.
      *
@@ -111,8 +114,8 @@ class form_entry extends persistent {
     /**
      * Check if a user can delete this entry
      *
-     * - the student can delete their own entries while they are a draft or submitted
-     *   (status up to {@see self::STUDENT_DELETE_MAX_STATUS});
+     * - the student can delete their own projects at any status, and their other entries while
+     *   they are a draft or submitted (status up to {@see self::STUDENT_DELETE_MAX_STATUS});
      * - teachers (mod/projetvet:approve) and administrators (mod/projetvet:admin) who can view
      *   the student can delete their entries at any status.
      *
@@ -133,7 +136,11 @@ class form_entry extends persistent {
             return true;
         }
 
-        return $studentid === $userid && (int) $this->get('entrystatus') <= self::STUDENT_DELETE_MAX_STATUS;
+        if ($studentid !== $userid) {
+            return false;
+        }
+        return (int) $this->get('entrystatus') <= self::STUDENT_DELETE_MAX_STATUS
+            || (new form_set($this->get('formsetid')))->get('idnumber') === self::PROJECT_FORMSET;
     }
 
     /**

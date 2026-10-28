@@ -325,9 +325,11 @@ class entries extends system_report {
             )));
         }
 
-        // Delete action: students delete their own drafts and submitted entries; teachers and
-        // administrators delete the student's projects at any status (see form_entry::can_delete()).
-        $teacherdelete = $isteacher && $formsetidnumber === 'activities'
+        // Delete action: students delete their own projects at any status and their other entries while
+        // draft or submitted; teachers and administrators delete the student's projects at any status
+        // (see form_entry::can_delete()).
+        $isproject = $formsetidnumber === form_entry_persistent::PROJECT_FORMSET;
+        $teacherdelete = $isteacher && $isproject
             && (has_capability('mod/projetvet:approve', $context) || has_capability('mod/projetvet:admin', $context));
         if (!$isteacher || $teacherdelete) {
             $this->add_action((new action(
@@ -341,8 +343,8 @@ class entries extends system_report {
                 false,
                 new lang_string('delete'),
             ))
-                ->add_callback(static function (\stdClass $row) use ($teacherdelete): bool {
-                    return $teacherdelete || $row->entrystatus <= form_entry_persistent::STUDENT_DELETE_MAX_STATUS;
+                ->add_callback(static function (\stdClass $row) use ($isproject): bool {
+                    return $isproject || $row->entrystatus <= form_entry_persistent::STUDENT_DELETE_MAX_STATUS;
                 }));
         }
     }

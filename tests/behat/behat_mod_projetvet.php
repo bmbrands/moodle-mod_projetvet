@@ -644,7 +644,8 @@ class behat_mod_projetvet extends behat_base {
         $cm = $this->get_cm_by_projetvet_name($activityname);
 
         $url = new moodle_url('/mod/projetvet/view.php', ['id' => $cm->id, 'studentid' => $student->id]);
-        $this->getSession()->visit($url->out());
+        // Unescaped URL: an escaped "&amp;" would drop the studentid parameter.
+        $this->getSession()->visit($url->out(false));
         $this->wait_for_pending_js();
     }
 

@@ -41,6 +41,12 @@ class behat_mod_projetvet_generator extends behat_generator_base {
                 'required' => ['field', 'entry'],
                 'switchids' => ['field' => 'fieldid', 'entry' => 'entryid'],
             ],
+            'projects' => [
+                'singular' => 'project',
+                'datagenerator' => 'project',
+                'required' => ['projetvet', 'student', 'title'],
+                'switchids' => ['projetvet' => 'projetvetid', 'student' => 'studentid'],
+            ],
             'projetvet groups' => [
                 'singular' => 'projetvet group',
                 'datagenerator' => 'projetvet_group',
@@ -63,7 +69,9 @@ class behat_mod_projetvet_generator extends behat_generator_base {
      * @return int The activity id
      */
     protected function get_projetvet_id(string $idnumber): int {
-        return $this->get_activity_id($idnumber);
+        // The entries reference the projetvet instance, not the course module.
+        $cm = get_coursemodule_from_id('projetvet', $this->get_activity_id($idnumber), 0, false, MUST_EXIST);
+        return (int) $cm->instance;
     }
 
     /**

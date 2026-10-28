@@ -389,4 +389,24 @@ class mod_projetvet_generator extends testing_module_generator {
 
         return $member->to_record();
     }
+
+    /**
+     * Create a project (activities entry) with a title.
+     *
+     * @param array|stdClass $record Keys: projetvetid, studentid, title and optionally entrystatus (default 0)
+     * @return stdClass The entry record
+     */
+    public function create_project($record): stdClass {
+        global $DB;
+
+        $record = (array) $record;
+        $titlefield = \mod_projetvet\local\persistent\form_field::get_record(['idnumber' => 'activity_title']);
+        $entryid = \mod_projetvet\local\api\entries::create_entry(
+            (int) $record['projetvetid'],
+            (int) $record['studentid'],
+            [$titlefield->get('id') => $record['title']],
+            (int) ($record['entrystatus'] ?? 0)
+        );
+        return $DB->get_record('projetvet_form_entry', ['id' => $entryid]);
+    }
 }

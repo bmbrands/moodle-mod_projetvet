@@ -24,10 +24,22 @@
 import ModalForm from 'core_form/modalform';
 import {get_string as getString} from 'core/str';
 import Notification from 'core/notification';
-import {saveCancelPromise} from 'core/notification';
+import {saveCancelPromise, deleteCancelPromise} from 'core/notification';
 import Repository from 'mod_projetvet/repository';
 import Templates from 'core/templates';
 import Pending from 'core/pending';
+
+/**
+ * Escape a text to insert it in HTML.
+ *
+ * @param {string} text
+ * @return {string}
+ */
+const escapeHtml = (text) => {
+    const element = document.createElement('div');
+    element.textContent = text;
+    return element.innerHTML;
+};
 
 /**
  * Initialize ECTS suggestion listeners
@@ -665,6 +677,36 @@ export const init = async() => {
             return;
         }
 
+        const deleteEntry = async() => {
+            const pending = new Pending('mod_projetvet/projetvet_form_delete_entry');
+            try {
+                await Repository.deleteEntry({entryid: parseInt(entryid)});
+                window.location.reload();
+            } catch (error) {
+                Notification.exception(error);
+            } finally {
+                pending.resolve();
+            }
+        };
+
+        // Projects: "Delete this project? The project «title» will be permanently deleted."
+        const entrytitle = button.dataset.entrytitle;
+        if (entrytitle) {
+            try {
+                await deleteCancelPromise(
+                    getString('deleteproject_title', 'mod_projetvet'),
+                    getString('deleteproject_confirm', 'mod_projetvet', escapeHtml(entrytitle)),
+                    getString('delete'),
+                    {triggerElement: button}
+                );
+            } catch (error) {
+                // The deletion was cancelled.
+                return;
+            }
+            await deleteEntry();
+            return;
+        }
+
         const confirmString = await getString('confirmdeleteactivity', 'mod_projetvet');
 
         Notification.confirm(
@@ -672,17 +714,7 @@ export const init = async() => {
             confirmString,
             getString('delete'),
             getString('cancel'),
-            async() => {
-                const pending = new Pending('mod_projetvet/projetvet_form_delete_entry');
-                try {
-                    await Repository.deleteEntry({entryid: parseInt(entryid)});
-                    window.location.reload();
-                } catch (error) {
-                    Notification.exception(error);
-                } finally {
-                    pending.resolve();
-                }
-            }
+            deleteEntry
         );
     });
 };

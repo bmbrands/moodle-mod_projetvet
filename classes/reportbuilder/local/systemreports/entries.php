@@ -22,6 +22,7 @@ use core_reportbuilder\local\report\column;
 use core_reportbuilder\system_report;
 use lang_string;
 use mod_projetvet\local\persistent\form_field;
+use mod_projetvet\local\persistent\form_entry as form_entry_persistent;
 use mod_projetvet\reportbuilder\local\entities\form_entry;
 use core\url as moodle_url;
 use pix_icon;
@@ -67,6 +68,19 @@ class entries extends system_report {
         // Base fields.
         $this->add_base_fields("{$entityentryalias}.id, {$entityentryalias}.entrystatus,
             {$entityentryalias}.timemodified");
+
+        // The project title, shown in the delete confirmation.
+        $titlefield = $DB->get_record('projetvet_form_field', ['idnumber' => 'activity_title'], 'id');
+        if ($titlefield) {
+            $paramtitlefield = database::generate_param_name();
+            $this->add_join(
+                "LEFT JOIN {projetvet_form_data} entrytitle
+                        ON entrytitle.entryid = {$entityentryalias}.id
+                       AND entrytitle.fieldid = :{$paramtitlefield}",
+                [$paramtitlefield => $titlefield->id]
+            );
+            $this->add_base_fields('entrytitle.charvalue AS entrytitle');
+        }
 
         // Filter by projetvet instance, student, and formset.
         $paramprojetvet = database::generate_param_name();
@@ -311,20 +325,24 @@ class entries extends system_report {
             )));
         }
 
-        // Delete action (for students viewing their own entries with entrystatus 0).
-        if (!$isteacher) {
+        // Delete action: students delete their own drafts and submitted entries; teachers and
+        // administrators delete the student's projects at any status (see form_entry::can_delete()).
+        $teacherdelete = $isteacher && $formsetidnumber === 'activities'
+            && (has_capability('mod/projetvet:approve', $context) || has_capability('mod/projetvet:admin', $context));
+        if (!$isteacher || $teacherdelete) {
             $this->add_action((new action(
                 new moodle_url('#'),
                 new pix_icon('i/delete', ''),
                 [
                     'data-action' => 'delete-activity',
                     'data-entryid' => ':id',
+                    'data-entrytitle' => ':entrytitle',
                 ],
                 false,
                 new lang_string('delete'),
             ))
-                ->add_callback(static function (\stdClass $row): bool {
-                    return ($row->entrystatus == 0 || $row->entrystatus == 1);
+                ->add_callback(static function (\stdClass $row) use ($teacherdelete): bool {
+                    return $teacherdelete || $row->entrystatus <= form_entry_persistent::STUDENT_DELETE_MAX_STATUS;
                 }));
         }
     }

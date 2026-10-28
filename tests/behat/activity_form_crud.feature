@@ -366,7 +366,8 @@ Feature: Activity form CRUD operations in mod_projetvet
     # First click on the row containing "Activity to Delete" to find the dropdown, then delete
     When I click on "Actions" "button" in the "Activity to Delete" "table_row"
     And I click on "Delete" "link"
-    And I click on "Delete" "button" in the "Confirm" "dialogue"
+    Then I should see "The project “Activity to Delete” will be permanently deleted." in the "Delete this project?" "dialogue"
+    And I click on "Delete" "button" in the "Delete this project?" "dialogue"
 
     Then I should not see "Activity to Delete"
 
